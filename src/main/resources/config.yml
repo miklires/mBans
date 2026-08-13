@@ -1,0 +1,105 @@
+config-version: 1
+
+storage:
+  type: h2
+  file: mbans
+  jdbc-url: ""
+  host: localhost
+  port: 3306
+  name: mbans
+  user: mbans
+  password: ""
+  pool-size: 6
+  connection-timeout-millis: 10000
+  max-lifetime-millis: 1800000
+
+language:
+  default: en_US
+
+network:
+  server-name: lobby
+  sync-enabled: true
+  poll-interval-ticks: 40
+  shared-secret: ""
+
+discord:
+  enabled: false
+  webhook-url: ""
+  bot-name: mBans
+  bot-avatar: ""
+  show-issuer: true
+  show-ip: false
+
+warns:
+  auto-ban-threshold: 3
+  auto-ban-duration: 30d
+  auto-ban-reason: "Accumulated <count> warnings"
+  deliver-offline-on-join: true
+
+escalation:
+  enabled: true
+  rules:
+    - type: WARN
+      count: 3
+      window: 7d
+      action: MUTE
+      duration: 1h
+      reason: "Automatic escalation: repeated warnings"
+    - type: WARN
+      count: 5
+      window: 7d
+      action: BAN
+      duration: 1d
+      reason: "Automatic escalation: repeated warnings"
+
+templates:
+  cheat:
+    type: BAN
+    duration: 30d
+    reason: "Unfair advantage"
+  spam:
+    type: MUTE
+    duration: 1h
+    reason: "Chat spam"
+  abuse:
+    type: WARN
+    reason: "Abusive behaviour"
+
+durations:
+  ban: [1d, 7d, 30d, permanent]
+  mute: [10m, 1h, 1d, permanent]
+
+immunity:
+  prevent-higher-level-targets: true
+  prevent-shorter-overrides: true
+
+alts:
+  notify-on-join: true
+  ip-retention-days: 90
+
+geoip:
+  enabled: false
+  database: GeoLite2-City.mmdb
+
+rest-api:
+  enabled: false
+  bind: 127.0.0.1
+  port: 8766
+  token: ""
+
+metrics:
+  enabled: true
+  bstats-id: 0
+
+updates:
+  enabled: true
+  modrinth-project-id: ""
+
+server:
+  display-name: Minecraft Server
+  support-link: ""
+
+defaults:
+  ban-kick-message: "<red><bold>You are banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Expires:</green> <white><expires></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
+  permanent-ban-kick-message: "<red><bold>You are permanently banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
+  kick-message: "<red><bold>You were removed from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>"

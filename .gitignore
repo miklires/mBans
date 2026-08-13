@@ -1,0 +1,17 @@
+.gradle/
+build/
+.idea/
+*.iml
+out/
+run/
+server/
+*.log
+*.db
+*.mv.db
+*.trace.db
+.env
+.codex/
+.agents/
+.claude/
+CLAUDE.md
+*.plan.md
