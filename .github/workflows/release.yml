@@ -3,6 +3,12 @@ name: release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        default: v1.0.0
 
 permissions:
   contents: write
@@ -37,7 +43,11 @@ jobs:
             --header "Content-Type: application/json" \
             --data-binary @modrinth-project.json \
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
-      - run: ./gradlew modrinth --no-daemon
+      - run: ./gradlew :modrinth --no-daemon
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+      - run: ./gradlew :velocity:modrinth --no-daemon
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
@@ -53,6 +63,7 @@ jobs:
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: |
             build/libs/mBans-1.0.0.jar
             velocity/build/libs/mBans-Velocity-1.0.0.jar

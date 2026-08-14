@@ -1,0 +1,43 @@
+name: update-modrinth-presentation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update project page
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          jq -n --rawfile body README.md '{
+            title: "mBans",
+            description: "Cross-server punishment management for Paper, Purpur, Folia, and Velocity networks.",
+            body: $body,
+            categories: ["management", "utility"],
+            source_url: "https://github.com/miklires/mBans",
+            issues_url: "https://github.com/miklires/mBans/issues",
+            license_id: "MIT",
+            requested_status: "approved"
+          }' > modrinth-project.json
+          curl --fail-with-body --request PATCH \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary @modrinth-project.json \
+            "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
+      - name: Upload project icon
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          curl --fail-with-body --request PATCH \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header "Content-Type: image/png" \
+            --data-binary @docs/assets/mbans-icon.png \
+            "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID/icon?ext=png"

@@ -14,17 +14,10 @@ modrinth {
     versionName.set("mBans ${project.version}")
     versionType.set("release")
     uploadFile.set(tasks.shadowJar)
-    additionalFiles {
-        other(layout.projectDirectory.file("velocity/build/libs/mBans-Velocity-${project.version}.jar"))
-    }
     gameVersions.add("26.2")
-    loaders.addAll("paper", "purpur", "folia", "velocity")
+    loaders.addAll("paper", "purpur", "folia")
     changelog.set(provider { file("CHANGELOG.md").takeIf { it.exists() }?.readText() ?: "" })
     syncBodyFrom.set(provider { file("README.md").takeIf { it.exists() }?.readText() ?: "" })
-}
-
-tasks.named("modrinth") {
-    dependsOn(":velocity:shadowJar")
 }
 
 java {

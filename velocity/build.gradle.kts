@@ -1,10 +1,27 @@
 plugins {
     java
     id("com.gradleup.shadow") version "9.0.0"
+    id("com.modrinth.minotaur") version "2.9.0"
 }
 
 group = "io.github.miklires"
 version = rootProject.version
+
+modrinth {
+    token.set(System.getenv("MODRINTH_TOKEN") ?: "")
+    projectId.set(System.getenv("MODRINTH_PROJECT_ID") ?: "")
+    versionNumber.set("${project.version}-velocity")
+    versionName.set("mBans Velocity ${project.version}")
+    versionType.set("release")
+    uploadFile.set(tasks.shadowJar)
+    gameVersions.add("26.2")
+    loaders.add("velocity")
+    changelog.set(provider { rootProject.file("CHANGELOG.md").readText() })
+}
+
+tasks.named("modrinth") {
+    dependsOn(tasks.shadowJar)
+}
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(25))

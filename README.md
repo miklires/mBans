@@ -1,6 +1,24 @@
-# mBans
+<div align="center">
+  <h1>mBans</h1>
+  <p>Cross-server punishment management for Paper, Purpur, Folia, and Velocity networks.</p>
 
-mBans manages bans, IP bans, mutes, warnings, kicks, and staff records across Paper networks.
+  <p>
+    <a href="https://papermc.io/software/paper"><img alt="Paper" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/paper_vector.svg"></a>
+    <a href="https://purpurmc.org"><img alt="Purpur" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/purpur_vector.svg"></a>
+    <a href="https://papermc.io/software/velocity"><img alt="Velocity" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/velocity_vector.svg"></a>
+  </p>
+
+  <p>
+    <a href="https://github.com/miklires/mBans"><img alt="GitHub" src="https://tr7zw.github.io/uikit/social_buttons_icon/Github-Button-64.png"></a>
+    <a href="https://modrinth.com/plugin/mbans"><img alt="Modrinth" src="https://tr7zw.github.io/uikit/social_buttons_icon/Modrinth-Button-64.png"></a>
+  </p>
+
+  <p>
+    <a href="https://bstats.org/plugin/bukkit/mBans/33351"><img alt="bStats" src="https://img.shields.io/badge/bStats-33351-2F9BE6?style=for-the-badge"></a>
+    <a href="https://github.com/miklires/mBans/releases/tag/v1.0.0"><img alt="Release 1.0.0" src="https://img.shields.io/github/v/release/miklires/mBans?style=for-the-badge"></a>
+    <img alt="Java 25" src="https://img.shields.io/badge/Java-25-5382A1?style=for-the-badge">
+  </p>
+</div>
 
 The backend plugin supports Paper, Purpur, and Folia 26.2. The proxy module blocks banned accounts before they enter a Velocity network.
 
