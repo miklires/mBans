@@ -15,3 +15,4 @@ All notable changes to mBans are documented in this file.
 - Paper Brigadier commands and optional asynchronous PlaceholderAPI status placeholders
 - vanilla and adaptive JDBC imports with dry runs, plus JSON and CSV history exports
 - English and Russian localization
+- registered bStats metrics and Modrinth update discovery

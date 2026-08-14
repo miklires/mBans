@@ -145,11 +145,11 @@ imports:
 
 metrics:
   enabled: true
-  bstats-id: 0
+  bstats-id: 33351
 
 updates:
   enabled: true
-  modrinth-project-id: ""
+  modrinth-project-id: "mbans"
 
 server:
   display-name: Minecraft Server

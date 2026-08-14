@@ -122,3 +122,5 @@ The vanilla profile reads `banned-players.json` and `banned-ips.json`. JDBC URLs
 ```
 
 The project is licensed under the MIT License.
+
+Usage statistics are available on [bStats](https://bstats.org/plugin/bukkit/mBans/33351).
