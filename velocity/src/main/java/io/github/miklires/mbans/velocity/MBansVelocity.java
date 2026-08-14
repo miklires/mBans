@@ -29,6 +29,8 @@ public class MBansVelocity {
     private final Path dataDirectory;
     private final Metrics.Factory metricsFactory;
     private BanStore store;
+    private GeoBlocker geoBlocker;
+    private VelocityConfig config;
 
     @Inject
     public MBansVelocity(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
@@ -41,8 +43,9 @@ public class MBansVelocity {
     @Subscribe
     public void onInitialize(ProxyInitializeEvent event) {
         try {
-            VelocityConfig config = VelocityConfig.load(dataDirectory);
+            config = VelocityConfig.load(dataDirectory);
             store = new BanStore(config);
+            geoBlocker = new GeoBlocker(dataDirectory, config);
             if (config.bstatsId() > 0) metricsFactory.make(this, config.bstatsId());
             logger.info("mBans Velocity enabled");
         } catch (Exception e) {
@@ -56,6 +59,10 @@ public class MBansVelocity {
             if (store == null) return;
             String ip = event.getPlayer().getRemoteAddress().getAddress().getHostAddress();
             try {
+                if (geoBlocker != null && geoBlocker.denied(event.getPlayer().getRemoteAddress().getAddress())) {
+                    event.setResult(LoginEvent.ComponentResult.denied(Component.text(config.geoIpDeniedMessage())));
+                    return;
+                }
                 store.find(event.getPlayer().getUniqueId(), ip).ifPresent(ban ->
                         event.setResult(LoginEvent.ComponentResult.denied(message(ban))));
             } catch (Exception e) {
@@ -81,5 +88,6 @@ public class MBansVelocity {
     @Subscribe
     public void onShutdown(ProxyShutdownEvent event) {
         if (store != null) store.close();
+        if (geoBlocker != null) try { geoBlocker.close(); } catch (Exception e) { logger.warn("Could not close GeoIP database", e); }
     }
 }

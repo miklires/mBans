@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.nio.file.Path;
 
 public class MBansAdminCommand implements TabExecutor {
 
@@ -31,7 +32,7 @@ public class MBansAdminCommand implements TabExecutor {
                              @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
             sender.sendMessage(Component.text("mBans " + plugin.getPluginMeta().getVersion()));
-            sender.sendMessage(Component.text("/mbans reload|rollback|allow|note|stats"));
+            sender.sendMessage(Component.text("/mbans reload|rollback|allow|note|notes|stats|import|export"));
             return true;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
@@ -40,7 +41,10 @@ public class MBansAdminCommand implements TabExecutor {
             case "rollback" -> rollback(sender, args);
             case "allow" -> allow(sender, args);
             case "note" -> note(sender, args);
+            case "notes" -> notes(sender, args);
             case "stats" -> stats(sender, args);
+            case "import" -> importData(sender, args);
+            case "export" -> exportData(sender, args);
             default -> {
                 sender.sendMessage(Component.text("Unknown subcommand"));
                 yield true;
@@ -85,24 +89,28 @@ public class MBansAdminCommand implements TabExecutor {
 
     private boolean allow(CommandSender sender, String[] args) {
         if (!check(sender, "mbans.command.allow")) return true;
-        if (args.length < 3) {
-            sender.sendMessage(Component.text("Usage: /mbans allow <punishment-id> <player>"));
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Usage: /mbans allow <player> [ip-ban-id]"));
             return true;
         }
-        long punishmentId;
-        try {
-            punishmentId = Long.parseLong(args[1]);
-        } catch (NumberFormatException e) {
-            sender.sendMessage(Component.text("Invalid punishment id"));
-            return true;
-        }
-        String playerName = args[2];
+        String playerName = args[1];
         plugin.getScheduler().async(() -> {
             try {
                 Optional<PlayerRepository.PlayerIdentity> target = plugin.getPlayerRepository().findByName(playerName);
                 if (target.isEmpty()) {
                     reply(sender, "Player not found in history");
                     return;
+                }
+                long punishmentId;
+                if (args.length >= 3) {
+                    try { punishmentId = Long.parseLong(args[2]); }
+                    catch (NumberFormatException e) { reply(sender, "Invalid punishment id"); return; }
+                } else {
+                    if (target.get().ip() == null) { reply(sender, "No recorded IP address for that player"); return; }
+                    Optional<io.github.miklires.mbans.model.Punishment> ban = plugin.getPunishmentRepository()
+                            .findActiveIpBan(target.get().ip());
+                    if (ban.isEmpty()) { reply(sender, "No active IP ban covers that player"); return; }
+                    punishmentId = ban.get().getId();
                 }
                 boolean added = plugin.getAdministrationRepository().allow(punishmentId, target.get().uuid());
                 reply(sender, added ? "IP-ban exception added for " + target.get().name() : "That exception already exists");
@@ -150,9 +158,98 @@ public class MBansAdminCommand implements TabExecutor {
             try {
                 AdministrationRepository.StaffStats stats = plugin.getAdministrationRepository().stats(staff);
                 reply(sender, staff + ": total " + stats.total() + ", bans " + stats.bans()
-                        + ", mutes " + stats.mutes() + ", warnings " + stats.warns() + ", revoked " + stats.revoked());
+                        + ", mutes " + stats.mutes() + ", warnings " + stats.warns() + ", revoked " + stats.revoked()
+                        + " (" + String.format(Locale.ROOT, "%.1f", stats.revocationRate() * 100) + "%), average timed duration "
+                        + io.github.miklires.mbans.service.DurationParser.format(java.time.Duration.ofSeconds(Math.round(stats.averageDurationSeconds()))));
             } catch (SQLException e) {
                 fail(sender, "Could not load staff stats", e);
+            }
+        });
+        return true;
+    }
+
+    private boolean notes(CommandSender sender, String[] args) {
+        if (!check(sender, "mbans.command.notes")) return true;
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Usage: /mbans notes <player>"));
+            return true;
+        }
+        plugin.getScheduler().async(() -> {
+            try {
+                Optional<PlayerRepository.PlayerIdentity> target = plugin.getPlayerRepository().findByName(args[1]);
+                if (target.isEmpty()) {
+                    reply(sender, "Player not found in history");
+                    return;
+                }
+                List<AdministrationRepository.StaffNote> notes = plugin.getAdministrationRepository()
+                        .notes(target.get().uuid(), 20);
+                reply(sender, "Staff notes for " + target.get().name() + " (" + notes.size() + ")");
+                for (AdministrationRepository.StaffNote note : notes) {
+                    reply(sender, "#" + note.id() + " " + note.author() + ": " + note.text());
+                }
+            } catch (SQLException e) {
+                fail(sender, "Could not load staff notes", e);
+            }
+        });
+        return true;
+    }
+
+    private boolean importData(CommandSender sender, String[] args) {
+        if (!check(sender, "mbans.command.import")) return true;
+        if (args.length < 2) {
+            reply(sender, "Usage: /mbans import <vanilla|litebans|libertybans|advancedban|banmanager> [directory|jdbc-url] [--dry-run]");
+            return true;
+        }
+        String profile = args[1].toLowerCase(Locale.ROOT);
+        String source = args.length > 2 && !args[2].startsWith("--")
+                ? args[2] : plugin.getConfigManager().getImportSource(profile);
+        if (source.isBlank()) {
+            reply(sender, "No import source configured for " + profile);
+            return true;
+        }
+        boolean dryRun = java.util.Arrays.stream(args).anyMatch("--dry-run"::equalsIgnoreCase);
+        plugin.getScheduler().async(() -> {
+            try {
+                io.github.miklires.mbans.service.DataTransferService.TransferResult result;
+                if (profile.equals("vanilla") || profile.equals("essentials")) {
+                    result = plugin.getDataTransferService().importVanilla(Path.of(source), dryRun);
+                } else if (List.of("litebans", "libertybans", "advancedban", "banmanager").contains(profile)) {
+                    String user = plugin.getConfigManager().getImportUser(profile);
+                    String password = plugin.getConfigManager().getImportPassword(profile);
+                    result = plugin.getDataTransferService().importJdbc(profile, source, user, password, dryRun);
+                } else {
+                    reply(sender, "Unsupported import profile");
+                    return;
+                }
+                reply(sender, (result.dryRun() ? "Dry run: " : "Import complete: ") + result.imported()
+                        + " accepted, " + result.skipped() + " skipped, " + result.read() + " read"
+                        + (result.backup() == null ? "" : ". Backup: " + result.backup().toAbsolutePath()));
+            } catch (Exception e) {
+                plugin.getLogger().warning("Import failed: " + e.getMessage());
+                reply(sender, "Import failed. See the server log for details.");
+            }
+        });
+        return true;
+    }
+
+    private boolean exportData(CommandSender sender, String[] args) {
+        if (!check(sender, "mbans.command.export")) return true;
+        if (args.length < 2) {
+            reply(sender, "Usage: /mbans export <player> [json|csv]");
+            return true;
+        }
+        String format = args.length > 2 ? args[2].toLowerCase(Locale.ROOT) : "json";
+        if (!format.equals("json") && !format.equals("csv")) {
+            reply(sender, "Format must be json or csv");
+            return true;
+        }
+        plugin.getScheduler().async(() -> {
+            try {
+                Path path = plugin.getDataTransferService().exportHistory(args[1], format);
+                reply(sender, "Export written to " + path.toAbsolutePath());
+            } catch (Exception e) {
+                plugin.getLogger().warning("Export failed: " + e.getMessage());
+                reply(sender, "Export failed. See the server log for details.");
             }
         });
         return true;
@@ -176,8 +273,13 @@ public class MBansAdminCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                       @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("reload", "rollback", "allow", "note", "stats").stream()
+        if (args.length == 1) return List.of("reload", "rollback", "allow", "note", "notes", "stats", "import", "export").stream()
                 .filter(value -> value.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
+        if (args.length == 2 && args[0].equalsIgnoreCase("import")) return List.of("vanilla", "litebans",
+                "libertybans", "advancedban", "banmanager").stream()
+                .filter(value -> value.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
+        if (args.length == 3 && args[0].equalsIgnoreCase("export")) return List.of("json", "csv").stream()
+                .filter(value -> value.startsWith(args[2].toLowerCase(Locale.ROOT))).toList();
         return List.of();
     }
 }

@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.Locale;
+import java.nio.file.Path;
 
 public class DatabaseManager {
 
@@ -88,6 +89,14 @@ public class DatabaseManager {
         if (version < 2) {
             migration2();
             setSchemaVersion(2);
+        }
+        if (version < 3) {
+            migration3();
+            setSchemaVersion(3);
+        }
+        if (version < 4) {
+            migration4();
+            setSchemaVersion(4);
         }
     }
 
@@ -197,6 +206,14 @@ public class DatabaseManager {
         createIndex("mbans_staff_notes", "idx_mbans_notes_uuid", "player_uuid, created_at");
     }
 
+    private void migration3() throws SQLException {
+        addColumn("mbans_punishments", "delivered_at", "BIGINT");
+    }
+
+    private void migration4() throws SQLException {
+        addColumn("mbans_player_history", "immunity_level", "INTEGER NOT NULL DEFAULT 0");
+    }
+
     private void addColumn(String table, String column, String definition) throws SQLException {
         if (hasColumn(table, column)) return;
         try (Connection c = getConnection(); Statement st = c.createStatement()) {
@@ -248,6 +265,41 @@ public class DatabaseManager {
 
     public StorageType getType() {
         return type;
+    }
+
+    public Path createBackup() throws SQLException {
+        Path backupDirectory = plugin.getDataFolder().toPath().resolve("backups");
+        try {
+            java.nio.file.Files.createDirectories(backupDirectory);
+        } catch (java.io.IOException e) {
+            throw new SQLException("Could not create backup directory", e);
+        }
+        String stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+                .withZone(java.time.ZoneOffset.UTC).format(Instant.now());
+        if (type == StorageType.H2) {
+            Path output = backupDirectory.resolve("mbans-" + stamp + ".zip");
+            try (Connection c = getConnection(); Statement st = c.createStatement()) {
+                st.execute("BACKUP TO '" + output.toAbsolutePath().toString().replace("'", "''").replace('\\', '/') + "'");
+            }
+            return output;
+        }
+        if (type == StorageType.SQLITE) {
+            Path source = plugin.getDataFolder().toPath().resolve(plugin.getConfigManager().getStorageFile() + ".db");
+            Path output = backupDirectory.resolve("mbans-" + stamp + ".db");
+            try {
+                java.nio.file.Files.copy(source, output, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.io.IOException e) {
+                throw new SQLException("Could not back up SQLite database", e);
+            }
+            return output;
+        }
+        Path marker = backupDirectory.resolve("external-storage-" + stamp + ".txt");
+        try {
+            java.nio.file.Files.writeString(marker, "External database backup required before import.\n");
+        } catch (java.io.IOException e) {
+            throw new SQLException("Could not create external backup marker", e);
+        }
+        return marker;
     }
 
     public void shutdown() {

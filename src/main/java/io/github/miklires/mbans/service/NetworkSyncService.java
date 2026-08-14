@@ -24,12 +24,12 @@ public class NetworkSyncService {
         plugin.getScheduler().async(() -> {
             try {
                 lastSeen = plugin.getNetworkLogRepository().latestId();
+                plugin.getScheduler().global(() -> plugin.getScheduler().repeatGlobal(this::poll,
+                        plugin.getConfigManager().getPollIntervalTicks(), plugin.getConfigManager().getPollIntervalTicks()));
             } catch (SQLException e) {
                 plugin.getLogger().warning("Could not initialize network sync: " + e.getMessage());
             }
         });
-        plugin.getScheduler().repeatGlobal(this::poll, plugin.getConfigManager().getPollIntervalTicks(),
-                plugin.getConfigManager().getPollIntervalTicks());
     }
 
     private void poll() {
@@ -52,15 +52,17 @@ public class NetworkSyncService {
         if (found.isEmpty()) return;
         Punishment punishment = found.get();
         if (!"CREATE".equals(event.action()) || !punishment.isActive()) return;
+        plugin.getPunishmentService().broadcast(punishment);
         if (punishment.getType() != PunishmentType.BAN && punishment.getType() != PunishmentType.IP_BAN) return;
 
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            boolean matchesUuid = punishment.getTargetUuid() != null && punishment.getTargetUuid().equals(player.getUniqueId());
-            boolean matchesIp = punishment.getTargetIp() != null && player.getAddress() != null
-                    && punishment.getTargetIp().equals(player.getAddress().getAddress().getHostAddress());
-            if (matchesUuid || matchesIp) {
-                plugin.getScheduler().entity(player, () -> player.kick(plugin.getPunishmentService().buildBanKickComponent(punishment)));
+        plugin.getScheduler().global(() -> {
+            for (Player player : plugin.getServer().getOnlinePlayers()) {
+                boolean matchesUuid = punishment.getTargetUuid() != null && punishment.getTargetUuid().equals(player.getUniqueId());
+                boolean matchesIp = punishment.getTargetIp() != null && player.getAddress() != null
+                        && punishment.getTargetIp().equals(player.getAddress().getAddress().getHostAddress());
+                if (matchesUuid || matchesIp) plugin.getScheduler().entity(player,
+                        () -> player.kick(plugin.getPunishmentService().buildBanKickComponent(punishment)));
             }
-        }
+        });
     }
 }

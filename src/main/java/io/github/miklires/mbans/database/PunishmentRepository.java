@@ -64,19 +64,17 @@ public class PunishmentRepository {
         String sql = """
             SELECT * FROM mbans_punishments
             WHERE target_uuid = ? AND type = ? AND active = TRUE
+              AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC LIMIT 1
             """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
             ps.setString(2, type.name());
+            ps.setLong(3, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Punishment p = map(rs);
-                    if (p.getExpiresAt() != null && Instant.now().isAfter(p.getExpiresAt())) {
-                        deactivate(p.getId(), "система", "истёк по времени");
-                        return Optional.empty();
-                    }
                     return Optional.of(p);
                 }
             }
@@ -88,19 +86,17 @@ public class PunishmentRepository {
         String sql = """
             SELECT * FROM mbans_punishments
             WHERE target_name = ? AND type = ? AND active = TRUE
+              AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC LIMIT 1
             """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, name.toLowerCase());
             ps.setString(2, type.name());
+            ps.setLong(3, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Punishment p = map(rs);
-                    if (p.getExpiresAt() != null && Instant.now().isAfter(p.getExpiresAt())) {
-                        deactivate(p.getId(), "система", "истёк по времени");
-                        return Optional.empty();
-                    }
                     return Optional.of(p);
                 }
             }
@@ -112,18 +108,16 @@ public class PunishmentRepository {
         String sql = """
             SELECT * FROM mbans_punishments
             WHERE target_ip = ? AND type = 'IP_BAN' AND active = TRUE
+              AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC LIMIT 1
             """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, ip);
+            ps.setLong(2, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Punishment p = map(rs);
-                    if (p.getExpiresAt() != null && Instant.now().isAfter(p.getExpiresAt())) {
-                        deactivate(p.getId(), "система", "истёк по времени");
-                        return Optional.empty();
-                    }
                     return Optional.of(p);
                 }
             }
@@ -143,11 +137,47 @@ public class PunishmentRepository {
         return Optional.empty();
     }
 
+    public boolean existsEquivalent(PunishmentType type, UUID uuid, String name, Instant issuedAt, String reason) throws SQLException {
+        String sql = "SELECT id FROM mbans_punishments WHERE type = ? AND "
+                + "((target_uuid = ?) OR (target_uuid IS NULL AND LOWER(target_name) = LOWER(?))) "
+                + "AND issued_at = ? AND reason = ? LIMIT 1";
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, type.name());
+            ps.setString(2, uuid == null ? "" : uuid.toString());
+            ps.setString(3, name == null ? "" : name);
+            ps.setLong(4, issuedAt.getEpochSecond());
+            ps.setString(5, reason);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        }
+    }
+
+    public List<Long> expireDue(Instant now) throws SQLException {
+        List<Long> ids = new ArrayList<>();
+        try (Connection c = db.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement find = c.prepareStatement(
+                    "SELECT id FROM mbans_punishments WHERE active = TRUE AND expires_at IS NOT NULL AND expires_at <= ?")) {
+                find.setLong(1, now.getEpochSecond());
+                try (ResultSet rs = find.executeQuery()) { while (rs.next()) ids.add(rs.getLong(1)); }
+            }
+            try (PreparedStatement update = c.prepareStatement(
+                    "UPDATE mbans_punishments SET active = FALSE, revoked_at = ?, revoke_reason = 'expired' "
+                            + "WHERE active = TRUE AND expires_at IS NOT NULL AND expires_at <= ?")) {
+                update.setLong(1, now.getEpochSecond());
+                update.setLong(2, now.getEpochSecond());
+                update.executeUpdate();
+            }
+            c.commit();
+        }
+        return ids;
+    }
+
     public int countActiveWarns(UUID uuid) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM mbans_punishments WHERE target_uuid = ? AND type = 'WARN' AND active = TRUE";
+        String sql = "SELECT COUNT(*) FROM mbans_punishments WHERE target_uuid = ? AND type = 'WARN' AND active = TRUE AND (expires_at IS NULL OR expires_at > ?)";
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
+            ps.setLong(2, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
             }
@@ -155,21 +185,58 @@ public class PunishmentRepository {
         return 0;
     }
 
+    public int countSince(UUID uuid, PunishmentType type, Instant since) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM mbans_punishments WHERE target_uuid = ? AND type = ? AND issued_at >= ?";
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, type.name());
+            ps.setLong(3, since.getEpochSecond());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     public List<Punishment> findActiveWarns(UUID uuid) throws SQLException {
         String sql = """
             SELECT * FROM mbans_punishments
             WHERE target_uuid = ? AND type = 'WARN' AND active = TRUE
+              AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC
             """;
         List<Punishment> out = new ArrayList<>();
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
+            ps.setLong(2, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) out.add(map(rs));
             }
         }
         return out;
+    }
+
+    public List<Punishment> findUndeliveredWarns(UUID uuid) throws SQLException {
+        String sql = "SELECT * FROM mbans_punishments WHERE target_uuid = ? AND type = 'WARN' "
+                + "AND active = TRUE AND delivered_at IS NULL AND (expires_at IS NULL OR expires_at > ?) "
+                + "ORDER BY issued_at DESC";
+        List<Punishment> out = new ArrayList<>();
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setLong(2, Instant.now().getEpochSecond());
+            try (ResultSet rs = ps.executeQuery()) { while (rs.next()) out.add(map(rs)); }
+        }
+        return out;
+    }
+
+    public void markWarnsDelivered(UUID uuid) throws SQLException {
+        String sql = "UPDATE mbans_punishments SET delivered_at = ? WHERE target_uuid = ? AND type = 'WARN' "
+                + "AND active = TRUE AND delivered_at IS NULL";
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, Instant.now().getEpochSecond());
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate();
+        }
     }
 
     public List<Punishment> getHistory(String name, int limit, int offset) throws SQLException {
@@ -216,14 +283,16 @@ public class PunishmentRepository {
         String sql = """
             SELECT * FROM mbans_punishments
             WHERE (type = 'BAN' OR type = 'IP_BAN') AND active = TRUE
+              AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC
             LIMIT ? OFFSET ?
             """;
         List<Punishment> out = new ArrayList<>();
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+            ps.setLong(1, Instant.now().getEpochSecond());
+            ps.setInt(2, limit);
+            ps.setInt(3, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) out.add(map(rs));
             }
@@ -257,7 +326,7 @@ public class PunishmentRepository {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, revokedBy);
             ps.setLong(2, Instant.now().getEpochSecond());
-            ps.setString(3, "снятие всех варнов");
+            ps.setString(3, "all warnings removed");
             ps.setString(4, uuid.toString());
             ps.executeUpdate();
         }

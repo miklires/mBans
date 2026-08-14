@@ -14,57 +14,7 @@ libraries:
   - com.mysql:mysql-connector-j:9.1.0
   - org.mariadb.jdbc:mariadb-java-client:3.5.1
   - org.postgresql:postgresql:42.7.5
-
-commands:
-  ban:
-    description: Permanently or temporarily ban a player
-    usage: /ban <player> [duration] <reason>
-  tempban:
-    description: Temporarily ban a player
-    usage: /tempban <player> <duration> <reason>
-  unban:
-    description: Remove a player ban
-    usage: /unban <player> [reason]
-    aliases: [pardon]
-  banlist:
-    description: List active bans
-    usage: /banlist [page]
-  banip:
-    description: Ban a player or IP address
-    usage: /banip <player|ip> [duration] <reason>
-  unbanip:
-    description: Remove an IP ban
-    usage: /unbanip <player|ip>
-  mute:
-    description: Permanently or temporarily mute a player
-    usage: /mute <player> [duration] <reason>
-  tempmute:
-    description: Temporarily mute a player
-    usage: /tempmute <player> <duration> <reason>
-  unmute:
-    description: Remove a player mute
-    usage: /unmute <player>
-  kick:
-    description: Kick an online player
-    usage: /kick <player> <reason>
-  warn:
-    description: Warn a player
-    usage: /warn <player> <reason>
-  unwarn:
-    description: Remove a warning
-    usage: /unwarn <player> <id|all>
-  history:
-    description: View punishment history
-    usage: /history <player> [page]
-  check:
-    description: Check active punishments
-    usage: /check <player>
-  staffhistory:
-    description: View punishments issued by a staff member
-    usage: /staffhistory <staff> [page]
-  mbans:
-    description: Manage mBans
-    usage: /mbans <reload|rollback|allow|note|stats|import>
+  - com.maxmind.geoip2:geoip2:5.2.0
 
 permissions:
   mbans.command.ban: {default: op}
@@ -82,15 +32,26 @@ permissions:
   mbans.command.history: {default: op}
   mbans.command.check: {default: op}
   mbans.command.staffhistory: {default: op}
+  mbans.command.alts: {default: op}
   mbans.command.rollback: {default: op}
   mbans.command.allow: {default: op}
   mbans.command.note: {default: op}
+  mbans.command.notes: {default: op}
   mbans.command.stats: {default: op}
   mbans.command.import: {default: op}
+  mbans.command.export: {default: op}
+  mbans.command.muser: {default: op}
   mbans.view.ip: {default: op}
+  mbans.notify.alts: {default: op}
+  mbans.override: {default: op}
+  mbans.immunity.helper: {default: false}
+  mbans.immunity.moderator: {default: false}
+  mbans.immunity.admin: {default: false}
+  mbans.immunity.owner: {default: false}
   mbans.bypass.ban: {default: false}
   mbans.bypass.mute: {default: false}
   mbans.bypass.kick: {default: false}
+  mbans.bypass.warn: {default: false}
   mbans.admin:
     default: op
     children:
@@ -109,9 +70,15 @@ permissions:
       mbans.command.history: true
       mbans.command.check: true
       mbans.command.staffhistory: true
+      mbans.command.alts: true
       mbans.command.rollback: true
       mbans.command.allow: true
       mbans.command.note: true
+      mbans.command.notes: true
       mbans.command.stats: true
       mbans.command.import: true
+      mbans.command.export: true
+      mbans.command.muser: true
       mbans.view.ip: true
+      mbans.notify.alts: true
+      mbans.override: true

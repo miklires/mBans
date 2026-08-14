@@ -25,8 +25,14 @@ public class BanCheckListener implements Listener {
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
         try {
             String ip = event.getAddress().getHostAddress();
+            if (plugin.getGeoIpService().isDenied(event.getAddress())) {
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
+                        net.kyori.adventure.text.Component.text(plugin.getConfigManager().getGeoIpDeniedMessage()));
+                return;
+            }
             Optional<Punishment> ipBan = plugin.getPunishmentRepository().findActiveIpBan(ip);
-            if (ipBan.isPresent() && !plugin.getAdministrationRepository().isAllowed(ipBan.get().getId(), event.getUniqueId())) {
+            if (!plugin.getConfigManager().isIpExempt(ip) && ipBan.isPresent()
+                    && !plugin.getAdministrationRepository().isAllowed(ipBan.get().getId(), event.getUniqueId())) {
                 event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED,
                         plugin.getPunishmentService().buildBanKickComponent(ipBan.get()));
                 return;

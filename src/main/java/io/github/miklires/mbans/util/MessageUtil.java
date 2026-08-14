@@ -8,6 +8,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.InputStream;
@@ -61,7 +62,12 @@ public class MessageUtil {
     }
 
     public void send(Audience target, String path, TagResolver... resolvers) {
-        target.sendMessage(get(path, resolvers));
+        Component message = get(path, resolvers);
+        if (target instanceof Player player) {
+            plugin.getScheduler().entity(player, () -> player.sendMessage(message));
+        } else {
+            plugin.getScheduler().global(() -> target.sendMessage(message));
+        }
     }
 
     public String getRawString(String path) {

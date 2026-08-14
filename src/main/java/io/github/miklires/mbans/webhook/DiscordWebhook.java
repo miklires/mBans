@@ -25,16 +25,16 @@ public class DiscordWebhook {
 
     public void sendPunishment(Punishment p) {
         if (!plugin.getConfigManager().isDiscordEnabled()) return;
-        String url = plugin.getConfigManager().getWebhookUrl();
-        if (url == null || url.isBlank() || url.contains("REPLACE_ME")) return;
+        String url = plugin.getConfigManager().getWebhookUrl(p.getType());
+        if (url == null || url.isBlank()) return;
 
         plugin.getScheduler().async(() -> postEmbed(url, buildEmbed(p, false)));
     }
 
     public void sendRevocation(Punishment p, String revokedBy) {
         if (!plugin.getConfigManager().isDiscordEnabled()) return;
-        String url = plugin.getConfigManager().getWebhookUrl();
-        if (url == null || url.isBlank() || url.contains("REPLACE_ME")) return;
+        String url = plugin.getConfigManager().getWebhookUrl(p.getType());
+        if (url == null || url.isBlank()) return;
 
         plugin.getScheduler().async(() -> postEmbed(url, buildRevocationEmbed(p, revokedBy)));
     }
@@ -47,29 +47,38 @@ public class DiscordWebhook {
             case WARN -> 0x3498DB;
         };
         String title = switch (p.getType()) {
-            case BAN -> "🔨 Бан";
-            case IP_BAN -> "🚫 IP-бан";
-            case MUTE -> "🔇 Мут";
-            case KICK -> "👢 Кик";
-            case WARN -> "⚠️ Варн";
+            case BAN -> "Ban";
+            case IP_BAN -> "IP ban";
+            case MUTE -> "Mute";
+            case KICK -> "Kick";
+            case WARN -> "Warning";
         };
 
-        String duration = p.isPermanent() ? "навсегда"
+        String duration = p.isPermanent() ? "permanent"
                 : DurationParser.format(Duration.between(p.getIssuedAt(), p.getExpiresAt()));
 
         StringBuilder fields = new StringBuilder();
-        fields.append(fieldJson("Игрок", escape(p.getTargetName() != null ? p.getTargetName() : "—"), true));
+        fields.append(fieldJson("Player", escape(p.getTargetName() != null ? p.getTargetName() : "Unknown"), true));
         fields.append(",");
         if (p.getType() != PunishmentType.KICK && p.getType() != PunishmentType.WARN) {
-            fields.append(fieldJson("Длительность", escape(duration), true)).append(",");
+            fields.append(fieldJson("Duration", escape(duration), true)).append(",");
         }
         if (plugin.getConfigManager().isShowIssuer()) {
-            fields.append(fieldJson("Выдал", escape(p.getIssuedByName()), true)).append(",");
+            fields.append(fieldJson("Issued by", escape(p.getIssuedByName()), true)).append(",");
         }
         if (plugin.getConfigManager().isShowIp() && p.getTargetIp() != null) {
             fields.append(fieldJson("IP", escape(p.getTargetIp()), true)).append(",");
         }
-        fields.append(fieldJson("Причина", escape(p.getReason() != null ? p.getReason() : "—"), false));
+        fields.append(fieldJson("Reason", escape(p.getReason() != null ? p.getReason() : "Not specified"), false));
+        if (p.getEvidence() != null && !p.getEvidence().isBlank()) {
+            fields.append(",").append(fieldJson("Evidence", escape(p.getEvidence()), false));
+        }
+
+        String appealUrl = plugin.getConfigManager().getDiscordAppealUrl();
+        if (appealUrl != null) appealUrl = appealUrl.replace("<appeal_id>", p.getAppealId() == null ? "" : p.getAppealId());
+        String components = appealUrl == null || appealUrl.isBlank() ? ""
+                : ",\"components\":[{\"type\":1,\"components\":[{\"type\":2,\"style\":5,\"label\":\"Appeal\",\"url\":\""
+                    + escape(appealUrl) + "\"}]}]";
 
         return "{"
                 + "\"username\":\"" + escape(plugin.getConfigManager().getWebhookBotName()) + "\","
@@ -80,20 +89,20 @@ public class DiscordWebhook {
                 + "\"color\":" + color + ","
                 + "\"fields\":[" + fields + "],"
                 + "\"timestamp\":\"" + java.time.format.DateTimeFormatter.ISO_INSTANT.format(p.getIssuedAt()) + "\""
-                + "}]}";
+                + "}]" + components + "}";
     }
 
     private String buildRevocationEmbed(Punishment p, String revokedBy) {
         String action = switch (p.getType()) {
-            case BAN -> "✅ Разбан";
-            case IP_BAN -> "✅ Снятие IP-бана";
-            case MUTE -> "✅ Размут";
-            default -> "✅ Снятие наказания";
+            case BAN -> "Ban removed";
+            case IP_BAN -> "IP ban removed";
+            case MUTE -> "Mute removed";
+            default -> "Punishment removed";
         };
 
-        String fields = fieldJson("Игрок", escape(p.getTargetName() != null ? p.getTargetName() : "—"), true)
-                + "," + fieldJson("Снял", escape(revokedBy), true)
-                + "," + fieldJson("Изначальная причина", escape(p.getReason() != null ? p.getReason() : "—"), false);
+        String fields = fieldJson("Player", escape(p.getTargetName() != null ? p.getTargetName() : "Unknown"), true)
+                + "," + fieldJson("Removed by", escape(revokedBy), true)
+                + "," + fieldJson("Original reason", escape(p.getReason() != null ? p.getReason() : "Not specified"), false);
 
         return "{"
                 + "\"username\":\"" + escape(plugin.getConfigManager().getWebhookBotName()) + "\","

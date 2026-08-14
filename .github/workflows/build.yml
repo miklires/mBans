@@ -1,0 +1,27 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew clean build :velocity:build --no-daemon
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mbans-${{ github.sha }}
+          path: |
+            build/libs/mBans-1.0.0.jar
+            velocity/build/libs/mBans-Velocity-1.0.0.jar

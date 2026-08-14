@@ -10,6 +10,8 @@ import io.github.miklires.mbans.service.DurationParser;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CommandHelper {
 
@@ -51,17 +53,30 @@ public class CommandHelper {
     }
 
     public static boolean isValidIp(String s) {
-        if (s == null || s.isBlank()) return false;
+        return normalizeIp(s) != null;
+    }
+
+    public static String normalizeIp(String s) {
+        if (s == null || s.isBlank()) return null;
         String[] parts = s.split("\\.");
-        if (parts.length != 4) return false;
-        try {
+        if (parts.length == 4) try {
+            StringBuilder normalized = new StringBuilder();
             for (String p : parts) {
                 int n = Integer.parseInt(p);
-                if (n < 0 || n > 255) return false;
+                if (n < 0 || n > 255) return null;
+                if (!normalized.isEmpty()) normalized.append('.');
+                normalized.append(n);
             }
-            return true;
+            return normalized.toString();
         } catch (NumberFormatException e) {
-            return false;
+            return null;
+        }
+        if (!s.contains(":") || !s.matches("[0-9A-Fa-f:]+")) return null;
+        try {
+            java.net.InetAddress address = java.net.InetAddress.getByName(s);
+            return address.getAddress().length == 16 ? address.getHostAddress() : null;
+        } catch (java.net.UnknownHostException e) {
+            return null;
         }
     }
 
@@ -71,4 +86,27 @@ public class CommandHelper {
     }
 
     public record ParsedArgs(Duration duration, String reason) {}
+
+    public static Options parseOptions(String[] args, int from) {
+        boolean silent = false;
+        String evidence = null;
+        int lastMessages = 0;
+        List<String> text = new ArrayList<>();
+        for (int i = from; i < args.length; i++) {
+            String value = args[i];
+            if (value.equalsIgnoreCase("-s")) {
+                silent = true;
+            } else if (value.regionMatches(true, 0, "--evidence=", 0, 11)) {
+                evidence = value.substring(11);
+            } else if (value.equalsIgnoreCase("-last") && i + 1 < args.length) {
+                try { lastMessages = Math.max(1, Integer.parseInt(args[++i])); }
+                catch (NumberFormatException ignored) { text.add(value); }
+            } else {
+                text.add(value);
+            }
+        }
+        return new Options(silent, evidence, lastMessages, String.join(" ", text).trim());
+    }
+
+    public record Options(boolean silent, String evidence, int lastMessages, String text) {}
 }

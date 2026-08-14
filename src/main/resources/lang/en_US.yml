@@ -21,6 +21,7 @@ errors:
   bypass-ban: "<red>That player is immune to bans."
   bypass-mute: "<red>That player is immune to mutes."
   bypass-kick: "<red>That player is immune to kicks."
+  bypass-warn: "<red>That player is immune to warnings."
   already-banned: "<red>That player is already banned."
   already-muted: "<red>That player is already muted."
   not-banned: "<red>That player is not banned."
@@ -60,3 +61,10 @@ notify:
   warn-auto-ban: "<red><count> warnings triggered an automatic ban."
   unbanned-notify: "<green>Your ban was removed."
   unmuted-notify: "<green>Your mute was removed."
+
+broadcast:
+  ban: "<red><player> was banned by <issuer>.</red> <gray><reason> (<duration>)"
+  ip-ban: "<red>An IP address was banned by <issuer>.</red> <gray><reason> (<duration>)"
+  mute: "<yellow><player> was muted by <issuer>.</yellow> <gray><reason> (<duration>)"
+  warn: "<gold><player> was warned by <issuer>.</gold> <gray><reason>"
+  kick: "<gray><player> was kicked by <issuer>. <reason>"

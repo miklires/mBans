@@ -17,6 +17,7 @@ public class BanStore implements AutoCloseable {
     public BanStore(VelocityConfig config) {
         HikariConfig hikari = new HikariConfig();
         hikari.setJdbcUrl(config.jdbcUrl());
+        hikari.setDriverClassName(driver(config.jdbcUrl()));
         hikari.setUsername(config.user());
         hikari.setPassword(config.password());
         hikari.setMaximumPoolSize(config.poolSize());
@@ -26,13 +27,25 @@ public class BanStore implements AutoCloseable {
         dataSource = new HikariDataSource(hikari);
     }
 
+    private String driver(String url) {
+        if (url.startsWith("jdbc:h2:")) return "org.h2.Driver";
+        if (url.startsWith("jdbc:mysql:")) return "com.mysql.cj.jdbc.Driver";
+        if (url.startsWith("jdbc:mariadb:")) return "org.mariadb.jdbc.Driver";
+        if (url.startsWith("jdbc:postgresql:")) return "org.postgresql.Driver";
+        throw new IllegalArgumentException("Unsupported JDBC URL");
+    }
+
     public Optional<Ban> find(UUID uuid, String ip) throws SQLException {
         String sql = "SELECT id, reason, issued_by_name, expires_at, appeal_id FROM mbans_punishments "
-                + "WHERE active = TRUE AND ((type = 'BAN' AND target_uuid = ?) OR (type = 'IP_BAN' AND target_ip = ?)) "
+                + "WHERE active = TRUE AND (expires_at IS NULL OR expires_at > ?) AND "
+                + "((type = 'BAN' AND target_uuid = ?) OR (type = 'IP_BAN' AND target_ip = ? AND NOT EXISTS "
+                + "(SELECT 1 FROM mbans_ip_allowlist a WHERE a.punishment_id = mbans_punishments.id AND a.player_uuid = ?))) "
                 + "ORDER BY issued_at DESC LIMIT 1";
         try (var connection = dataSource.getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, ip);
+            ps.setLong(1, Instant.now().getEpochSecond());
+            ps.setString(2, uuid.toString());
+            ps.setString(3, ip);
+            ps.setString(4, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 long expires = rs.getLong("expires_at");

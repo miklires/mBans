@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew clean build :velocity:build --no-daemon
+      - name: Update Modrinth project page
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          jq -n --rawfile body README.md '{
+            title: "mBans",
+            description: "Cross-server punishment management for Paper, Purpur, Folia, and Velocity networks.",
+            body: $body,
+            categories: ["management", "utility"],
+            source_url: "https://github.com/miklires/mBans",
+            issues_url: "https://github.com/miklires/mBans/issues",
+            license_id: "MIT"
+          }' > modrinth-project.json
+          curl --fail-with-body --request PATCH \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary @modrinth-project.json \
+            "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
+      - run: ./gradlew modrinth --no-daemon
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+      - name: Submit Modrinth project for review
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          curl --fail-with-body --request PATCH \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"requested_status":"approved"}' \
+            "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            build/libs/mBans-1.0.0.jar
+            velocity/build/libs/mBans-Velocity-1.0.0.jar

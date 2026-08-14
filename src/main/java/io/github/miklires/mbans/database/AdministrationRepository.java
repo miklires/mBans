@@ -86,22 +86,44 @@ public class AdministrationRepository {
         }
     }
 
+    public List<StaffNote> notes(UUID playerUuid, int limit) throws SQLException {
+        String sql = "SELECT id, author_name, note, created_at FROM mbans_staff_notes "
+                + "WHERE player_uuid = ? ORDER BY created_at DESC LIMIT ?";
+        List<StaffNote> notes = new ArrayList<>();
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, playerUuid.toString());
+            ps.setInt(2, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) notes.add(new StaffNote(rs.getLong("id"), rs.getString("author_name"),
+                        rs.getString("note"), Instant.ofEpochSecond(rs.getLong("created_at"))));
+            }
+        }
+        return notes;
+    }
+
     public StaffStats stats(String staff) throws SQLException {
         String sql = "SELECT COUNT(*) AS total, "
                 + "SUM(CASE WHEN active = FALSE AND revoked_at IS NOT NULL THEN 1 ELSE 0 END) AS revoked, "
                 + "SUM(CASE WHEN type = 'BAN' THEN 1 ELSE 0 END) AS bans, "
                 + "SUM(CASE WHEN type = 'MUTE' THEN 1 ELSE 0 END) AS mutes, "
                 + "SUM(CASE WHEN type = 'WARN' THEN 1 ELSE 0 END) AS warns "
+                + ", AVG(CASE WHEN expires_at IS NOT NULL THEN expires_at - issued_at ELSE NULL END) AS avg_duration "
                 + "FROM mbans_punishments WHERE LOWER(issued_by_name) = LOWER(?)";
         try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, staff);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return new StaffStats(rs.getInt("total"), rs.getInt("revoked"),
-                        rs.getInt("bans"), rs.getInt("mutes"), rs.getInt("warns"));
+                if (rs.next()) {
+                    int total = rs.getInt("total");
+                    int revoked = rs.getInt("revoked");
+                    return new StaffStats(total, revoked, rs.getInt("bans"), rs.getInt("mutes"), rs.getInt("warns"),
+                            rs.getDouble("avg_duration"), total == 0 ? 0.0 : (double) revoked / total);
+                }
             }
         }
-        return new StaffStats(0, 0, 0, 0, 0);
+        return new StaffStats(0, 0, 0, 0, 0, 0.0, 0.0);
     }
 
-    public record StaffStats(int total, int revoked, int bans, int mutes, int warns) {}
+    public record StaffStats(int total, int revoked, int bans, int mutes, int warns,
+                             double averageDurationSeconds, double revocationRate) {}
+    public record StaffNote(long id, String author, String text, Instant createdAt) {}
 }

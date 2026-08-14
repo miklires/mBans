@@ -21,6 +21,7 @@ errors:
   bypass-ban: "<red>У игрока иммунитет к бану."
   bypass-mute: "<red>У игрока иммунитет к муту."
   bypass-kick: "<red>У игрока иммунитет к кику."
+  bypass-warn: "<red>У игрока иммунитет к предупреждениям."
   already-banned: "<red>Игрок уже забанен."
   already-muted: "<red>Игрок уже замьючен."
   not-banned: "<red>Игрок не забанен."
@@ -60,3 +61,10 @@ notify:
   warn-auto-ban: "<red><count> предупреждений привели к автоматическому бану."
   unbanned-notify: "<green>Ваш бан снят."
   unmuted-notify: "<green>Ваш мут снят."
+
+broadcast:
+  ban: "<red><player> забанен модератором <issuer>.</red> <gray><reason> (<duration>)"
+  ip-ban: "<red>IP-адрес забанен модератором <issuer>.</red> <gray><reason> (<duration>)"
+  mute: "<yellow><player> получил мут от <issuer>.</yellow> <gray><reason> (<duration>)"
+  warn: "<gold><player> получил предупреждение от <issuer>.</gold> <gray><reason>"
+  kick: "<gray><player> кикнут модератором <issuer>. <reason>"

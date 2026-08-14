@@ -1,21 +1,8 @@
 package io.github.miklires.mbans;
 
-import io.github.miklires.mbans.command.BanCommand;
-import io.github.miklires.mbans.command.BanIpCommand;
-import io.github.miklires.mbans.command.BanlistCommand;
-import io.github.miklires.mbans.command.CheckCommand;
-import io.github.miklires.mbans.command.HistoryCommand;
-import io.github.miklires.mbans.command.KickCommand;
 import io.github.miklires.mbans.command.MBansAdminCommand;
-import io.github.miklires.mbans.command.MuteCommand;
-import io.github.miklires.mbans.command.StaffHistoryCommand;
-import io.github.miklires.mbans.command.TempBanCommand;
-import io.github.miklires.mbans.command.TempMuteCommand;
-import io.github.miklires.mbans.command.UnbanCommand;
-import io.github.miklires.mbans.command.UnbanIpCommand;
-import io.github.miklires.mbans.command.UnmuteCommand;
-import io.github.miklires.mbans.command.UnwarnCommand;
-import io.github.miklires.mbans.command.WarnCommand;
+import io.github.miklires.mbans.command.PunishmentCommand;
+import io.github.miklires.mbans.command.BrigadierCommands;
 import io.github.miklires.mbans.config.ConfigManager;
 import io.github.miklires.mbans.database.DatabaseManager;
 import io.github.miklires.mbans.database.AdministrationRepository;
@@ -25,14 +12,21 @@ import io.github.miklires.mbans.database.PunishmentRepository;
 import io.github.miklires.mbans.listener.BanCheckListener;
 import io.github.miklires.mbans.listener.MuteListener;
 import io.github.miklires.mbans.listener.PlayerTrackingListener;
+import io.github.miklires.mbans.gui.MUserGui;
 import io.github.miklires.mbans.service.NetworkSyncService;
 import io.github.miklires.mbans.service.PunishmentService;
+import io.github.miklires.mbans.service.ProfileResolver;
+import io.github.miklires.mbans.service.RestApiService;
+import io.github.miklires.mbans.service.ChatEvidenceService;
+import io.github.miklires.mbans.service.GeoIpService;
+import io.github.miklires.mbans.service.DataTransferService;
+import io.github.miklires.mbans.service.UpdateChecker;
+import io.github.miklires.mbans.service.CleanupService;
+import io.github.miklires.mbans.placeholder.MBansExpansion;
 import io.github.miklires.mbans.util.MessageUtil;
 import io.github.miklires.mbans.util.PluginScheduler;
 import io.github.miklires.mbans.webhook.DiscordWebhook;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.TabCompleter;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MBans extends JavaPlugin {
@@ -48,6 +42,14 @@ public class MBans extends JavaPlugin {
     private PunishmentService punishmentService;
     private DiscordWebhook discordWebhook;
     private NetworkSyncService networkSyncService;
+    private ProfileResolver profileResolver;
+    private RestApiService restApiService;
+    private ChatEvidenceService chatEvidenceService;
+    private GeoIpService geoIpService;
+    private DataTransferService dataTransferService;
+    private UpdateChecker updateChecker;
+    private CleanupService cleanupService;
+    private MUserGui muserGui;
 
     @Override
     public void onEnable() {
@@ -56,6 +58,13 @@ public class MBans extends JavaPlugin {
         messageUtil = new MessageUtil(this);
         scheduler = new PluginScheduler(this);
         databaseManager = new DatabaseManager(this);
+
+        PunishmentCommand punishments = new PunishmentCommand(this);
+        MBansAdminCommand admin = new MBansAdminCommand(this);
+        muserGui = new MUserGui(this);
+        BrigadierCommands commands = new BrigadierCommands(punishments, admin, muserGui);
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS,
+                event -> commands.register(event.registrar()));
 
         scheduler.async(() -> {
             try {
@@ -66,6 +75,13 @@ public class MBans extends JavaPlugin {
                 administrationRepository = new AdministrationRepository(databaseManager);
                 discordWebhook = new DiscordWebhook(this);
                 punishmentService = new PunishmentService(this);
+                profileResolver = new ProfileResolver(this);
+                restApiService = new RestApiService(this);
+                chatEvidenceService = new ChatEvidenceService(this);
+                geoIpService = new GeoIpService(this);
+                dataTransferService = new DataTransferService(this);
+                updateChecker = new UpdateChecker(this);
+                cleanupService = new CleanupService(this);
                 networkSyncService = new NetworkSyncService(this);
                 scheduler.global(this::finishEnable);
             } catch (Exception e) {
@@ -79,40 +95,27 @@ public class MBans extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BanCheckListener(this), this);
         getServer().getPluginManager().registerEvents(new MuteListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerTrackingListener(this), this);
-
-        register("ban", new BanCommand(this));
-        register("tempban", new TempBanCommand(this));
-        register("unban", new UnbanCommand(this));
-        register("banlist", new BanlistCommand(this));
-        register("banip", new BanIpCommand(this));
-        register("unbanip", new UnbanIpCommand(this));
-        register("mute", new MuteCommand(this));
-        register("tempmute", new TempMuteCommand(this));
-        register("unmute", new UnmuteCommand(this));
-        register("kick", new KickCommand(this));
-        register("warn", new WarnCommand(this));
-        register("unwarn", new UnwarnCommand(this));
-        register("history", new HistoryCommand(this));
-        register("check", new CheckCommand(this));
-        register("staffhistory", new StaffHistoryCommand(this));
-        register("mbans", new MBansAdminCommand(this));
+        getServer().getPluginManager().registerEvents(chatEvidenceService, this);
+        getServer().getPluginManager().registerEvents(muserGui, this);
 
         int bstatsId = configManager.getBstatsId();
         if (configManager.isMetricsEnabled() && bstatsId > 0) new org.bstats.bukkit.Metrics(this, bstatsId);
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            new MBansExpansion(this).register();
+        }
         networkSyncService.start();
+        geoIpService.start();
+        restApiService.start();
+        updateChecker.start();
+        cleanupService.start();
         getLogger().info("mBans " + getPluginMeta().getVersion() + " enabled (" + databaseManager.getType().name().toLowerCase() + ")");
-    }
-
-    private void register(String name, CommandExecutor executor) {
-        PluginCommand command = getCommand(name);
-        if (command == null) throw new IllegalStateException("Missing command in plugin.yml: " + name);
-        command.setExecutor(executor);
-        if (executor instanceof TabCompleter completer) command.setTabCompleter(completer);
     }
 
     @Override
     public void onDisable() {
+        if (restApiService != null) restApiService.stop();
         if (scheduler != null) scheduler.shutdown();
+        if (geoIpService != null) geoIpService.stop();
         if (databaseManager != null) databaseManager.shutdown();
         getLogger().info("mBans disabled");
     }
@@ -127,4 +130,8 @@ public class MBans extends JavaPlugin {
     public AdministrationRepository getAdministrationRepository() { return administrationRepository; }
     public PunishmentService getPunishmentService() { return punishmentService; }
     public DiscordWebhook getDiscordWebhook() { return discordWebhook; }
+    public ProfileResolver getProfileResolver() { return profileResolver; }
+    public ChatEvidenceService getChatEvidenceService() { return chatEvidenceService; }
+    public GeoIpService getGeoIpService() { return geoIpService; }
+    public DataTransferService getDataTransferService() { return dataTransferService; }
 }

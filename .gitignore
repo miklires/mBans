@@ -10,8 +10,3 @@ server/
 *.mv.db
 *.trace.db
 .env
-.codex/
-.agents/
-.claude/
-CLAUDE.md
-*.plan.md

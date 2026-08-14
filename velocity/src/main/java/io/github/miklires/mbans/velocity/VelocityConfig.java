@@ -5,7 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-public record VelocityConfig(String jdbcUrl, String user, String password, int poolSize, int bstatsId) {
+public record VelocityConfig(String jdbcUrl, String user, String password, int poolSize, int bstatsId,
+                             boolean geoIpEnabled, String geoIpDatabase, String geoIpAllowed,
+                             String geoIpBlocked, String geoIpDeniedMessage) {
 
     public static VelocityConfig load(Path directory) throws IOException {
         Files.createDirectories(directory);
@@ -21,16 +23,25 @@ public record VelocityConfig(String jdbcUrl, String user, String password, int p
         values.putIfAbsent("password", "");
         values.putIfAbsent("pool-size", "3");
         values.putIfAbsent("bstats-id", "0");
+        values.putIfAbsent("geoip-enabled", "false");
+        values.putIfAbsent("geoip-database", "GeoLite2-Country.mmdb");
+        values.putIfAbsent("geoip-allowed-countries", "");
+        values.putIfAbsent("geoip-blocked-countries", "");
+        values.putIfAbsent("geoip-denied-message", "Your region is not allowed on this network.");
         try (var writer = Files.newBufferedWriter(file)) {
             values.store(writer, "mBans Velocity");
         }
         String url = values.getProperty("jdbc-url").trim();
-        if (!url.startsWith("jdbc:mysql:") && !url.startsWith("jdbc:mariadb:") && !url.startsWith("jdbc:postgresql:")) {
-            throw new IllegalArgumentException("jdbc-url must use MySQL, MariaDB or PostgreSQL");
+        if (!url.startsWith("jdbc:mysql:") && !url.startsWith("jdbc:mariadb:")
+                && !url.startsWith("jdbc:postgresql:") && !url.startsWith("jdbc:h2:")) {
+            throw new IllegalArgumentException("jdbc-url must use H2, MySQL, MariaDB or PostgreSQL");
         }
         return new VelocityConfig(url, values.getProperty("user"), values.getProperty("password"),
                 boundedInt(values.getProperty("pool-size"), 1, 16, 3),
-                boundedInt(values.getProperty("bstats-id"), 0, Integer.MAX_VALUE, 0));
+                boundedInt(values.getProperty("bstats-id"), 0, Integer.MAX_VALUE, 0),
+                Boolean.parseBoolean(values.getProperty("geoip-enabled")),
+                values.getProperty("geoip-database"), values.getProperty("geoip-allowed-countries"),
+                values.getProperty("geoip-blocked-countries"), values.getProperty("geoip-denied-message"));
     }
 
     private static int boundedInt(String value, int min, int max, int fallback) {

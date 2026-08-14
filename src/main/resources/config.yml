@@ -20,18 +20,28 @@ network:
   server-name: lobby
   sync-enabled: true
   poll-interval-ticks: 40
-  shared-secret: ""
+
+broadcast:
+  enabled: true
 
 discord:
   enabled: false
   webhook-url: ""
+  webhooks:
+    ban: ""
+    ip-ban: ""
+    mute: ""
+    warn: ""
+    kick: ""
+  appeal-url: ""
   bot-name: mBans
   bot-avatar: ""
   show-issuer: true
   show-ip: false
 
 warns:
-  auto-ban-threshold: 3
+  # Legacy single-step auto-ban. Keep 0 when escalation.rules is used.
+  auto-ban-threshold: 0
   auto-ban-duration: 30d
   auto-ban-reason: "Accumulated <count> warnings"
   deliver-offline-on-join: true
@@ -71,21 +81,67 @@ durations:
 
 immunity:
   prevent-higher-level-targets: true
-  prevent-shorter-overrides: true
+  operator-level: 100
+  levels:
+    mbans.immunity.helper: 10
+    mbans.immunity.moderator: 20
+    mbans.immunity.admin: 50
+    mbans.immunity.owner: 100
+
+exemptions:
+  worlds: []
+  # IPv4 and IPv6 CIDR ranges, for example: ["10.0.0.0/8", "2001:db8::/32"]
+  ip-ranges: []
 
 alts:
   notify-on-join: true
   ip-retention-days: 90
 
+cleanup:
+  interval-ticks: 1200
+
+profiles:
+  mojang-lookup: true
+  timeout-seconds: 5
+
+chat-evidence:
+  enabled: true
+  buffer-size: 20
+
 geoip:
   enabled: false
-  database: GeoLite2-City.mmdb
+  database: GeoLite2-Country.mmdb
+  allowed-countries: []
+  blocked-countries: []
+  denied-message: "Your region is not allowed on this server."
 
 rest-api:
   enabled: false
   bind: 127.0.0.1
   port: 8766
   token: ""
+  requests-per-minute: 120
+
+# Credentials stay in this file instead of command history.
+imports:
+  vanilla:
+    source: "."
+  litebans:
+    source: ""
+    user: ""
+    password: ""
+  libertybans:
+    source: ""
+    user: ""
+    password: ""
+  advancedban:
+    source: ""
+    user: ""
+    password: ""
+  banmanager:
+    source: ""
+    user: ""
+    password: ""
 
 metrics:
   enabled: true
@@ -100,6 +156,6 @@ server:
   support-link: ""
 
 defaults:
-  ban-kick-message: "<red><bold>You are banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Expires:</green> <white><expires></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
-  permanent-ban-kick-message: "<red><bold>You are permanently banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
+  ban-kick-message: "<red><bold>You are banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Expires:</green> <white><expires></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Evidence:</green> <white><evidence></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
+  permanent-ban-kick-message: "<red><bold>You are permanently banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Evidence:</green> <white><evidence></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
   kick-message: "<red><bold>You were removed from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>"

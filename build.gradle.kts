@@ -14,10 +14,17 @@ modrinth {
     versionName.set("mBans ${project.version}")
     versionType.set("release")
     uploadFile.set(tasks.shadowJar)
+    additionalFiles {
+        other(layout.projectDirectory.file("velocity/build/libs/mBans-Velocity-${project.version}.jar"))
+    }
     gameVersions.add("26.2")
-    loaders.addAll("paper", "purpur", "folia")
+    loaders.addAll("paper", "purpur", "folia", "velocity")
     changelog.set(provider { file("CHANGELOG.md").takeIf { it.exists() }?.readText() ?: "" })
     syncBodyFrom.set(provider { file("README.md").takeIf { it.exists() }?.readText() ?: "" })
+}
+
+tasks.named("modrinth") {
+    dependsOn(":velocity:shadowJar")
 }
 
 java {
@@ -27,11 +34,15 @@ java {
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.extendedclip.com/releases/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
+    compileOnly("me.clip:placeholderapi:2.11.7")
     implementation("org.bstats:bstats-bukkit:3.1.0")
+    implementation("com.google.code.gson:gson:2.14.0")
+    compileOnly("com.maxmind.geoip2:geoip2:5.2.0")
 
     compileOnly("com.zaxxer:HikariCP:6.2.1")
     compileOnly("com.h2database:h2:2.3.232")
@@ -66,6 +77,7 @@ tasks {
 
         mergeServiceFiles()
         relocate("org.bstats", "io.github.miklires.mbans.libs.bstats")
+        relocate("com.google.gson", "io.github.miklires.mbans.libs.gson")
     }
 
     build {
