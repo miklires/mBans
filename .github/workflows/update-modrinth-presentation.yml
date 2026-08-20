@@ -41,3 +41,12 @@ jobs:
             --header "Content-Type: image/png" \
             --data-binary @docs/assets/mbans-icon.png \
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID/icon?ext=png"
+      - name: Verify project metadata
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          curl --fail-with-body --silent \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID" \
+            | jq '{id, slug, status, requested_status, categories, icon_url}'
