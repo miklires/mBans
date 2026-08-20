@@ -18,7 +18,7 @@ jobs:
         run: |
           jq -n --rawfile body README.md '{
             title: "mBans",
-            description: "Cross-server punishment management for Paper, Purpur, Folia, and Velocity networks.",
+            description: "Flexible moderation and punishment management for Paper, Purpur, Folia, and Velocity networks.",
             body: $body,
             categories: ["management", "utility"],
             source_url: "https://github.com/miklires/mBans",
