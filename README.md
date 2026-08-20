@@ -5,6 +5,7 @@
   <p>
     <a href="https://papermc.io/software/paper"><img alt="Paper" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/paper_vector.svg"></a>
     <a href="https://purpurmc.org"><img alt="Purpur" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/purpur_vector.svg"></a>
+    <a href="https://papermc.io/software/folia"><img alt="Folia" height="56" src="https://raw.githubusercontent.com/miklires/mBans/main/docs/assets/folia-available.png"></a>
     <a href="https://papermc.io/software/velocity"><img alt="Velocity" height="56" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/supported/velocity_vector.svg"></a>
   </p>
 
@@ -133,6 +134,10 @@ The vanilla profile reads `banned-players.json` and `banned-ips.json`. JDBC URLs
 - `mBans-1.0.0.jar`: Paper, Purpur, and Folia backend
 - `mBans-Velocity-1.0.0.jar`: Velocity login enforcement
 
+## Telemetry and updates
+
+mBans uses [bStats plugin ID 33351](https://bstats.org/plugin/bukkit/mBans/33351) for anonymous usage statistics. Disable collection with `metrics.enabled: false`. The update checker reads the public Modrinth project and can be disabled independently with `updates.enabled: false`.
+
 ## Build
 
 ```bash
@@ -140,5 +145,3 @@ The vanilla profile reads `banned-players.json` and `banned-ips.json`. JDBC URLs
 ```
 
 The project is licensed under the MIT License.
-
-Usage statistics are available on [bStats](https://bstats.org/plugin/bukkit/mBans/33351).
