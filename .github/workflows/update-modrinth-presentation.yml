@@ -23,6 +23,9 @@ jobs:
             categories: ["management", "utility"],
             source_url: "https://github.com/miklires/mBans",
             issues_url: "https://github.com/miklires/mBans/issues",
+            wiki_url: "https://miklires.su/wiki/mbans",
+            discord_url: "https://discord.gg/pes25cnWKy",
+            donation_urls: [{id: "other", platform: "Other", url: "https://miklires.su/support"}],
             license_id: "MIT",
             requested_status: "approved"
           }' > modrinth-project.json
@@ -41,6 +44,17 @@ jobs:
             --header "Content-Type: image/png" \
             --data-binary @docs/assets/mbans-icon.png \
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID/icon?ext=png"
+      - name: Update telemetry disclosure
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+        run: |
+          jq -n '{set: [{type: "telemetry", consent: "opt_out", data_collected: ["https://bstats.org/docs/server-owners"]}], remove: []}' \
+            | curl --fail-with-body --request PATCH \
+              --header "Authorization: $MODRINTH_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data-binary @- \
+              "https://api.modrinth.com/v3/project/$MODRINTH_PROJECT_ID/disclosures"
       - name: Verify project metadata
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -49,4 +63,8 @@ jobs:
           curl --fail-with-body --silent \
             --header "Authorization: $MODRINTH_TOKEN" \
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID" \
-            | jq '{id, slug, status, requested_status, categories, icon_url}'
+            | jq '{id, slug, status, requested_status, categories, icon_url, source_url, issues_url, wiki_url, discord_url, donation_urls}'
+          curl --fail-with-body --silent \
+            --header "Authorization: $MODRINTH_TOKEN" \
+            "https://api.modrinth.com/v3/project/$MODRINTH_PROJECT_ID/disclosures" \
+            | jq '.disclosures | map({type, consent, data_collected})'
