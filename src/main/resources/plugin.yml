@@ -49,6 +49,8 @@ permissions:
   mbans.view.ip: {default: op}
   mbans.notify.alts: {default: op}
   mbans.override: {default: op}
+  mbans.override.shorten: {default: false}
+  mbans.silent: {default: op}
   mbans.immunity.helper: {default: false}
   mbans.immunity.moderator: {default: false}
   mbans.immunity.admin: {default: false}
@@ -92,3 +94,5 @@ permissions:
       mbans.view.ip: true
       mbans.notify.alts: true
       mbans.override: true
+      mbans.override.shorten: true
+      mbans.silent: true

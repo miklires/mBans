@@ -124,12 +124,16 @@ public class PunishmentService {
 
     public Punishment kick(UUID targetUuid, String targetName, String targetIp, String reason,
                            String issuerName, UUID issuerUuid) throws SQLException {
+        return kick(targetUuid,targetName,targetIp,reason,issuerName,issuerUuid,false,null);
+    }
+
+    public Punishment kick(UUID targetUuid,String targetName,String targetIp,String reason,String issuerName,UUID issuerUuid,boolean silent,String evidence)throws SQLException{
         Punishment p = newBase(PunishmentType.KICK, targetUuid, targetName, targetIp, reason, issuerName, issuerUuid);
+        p.setSilent(silent);p.setEvidence(evidence);
         plugin.getPunishmentRepository().insert(p);
         recordChange(p, "CREATE");
         kickIfOnline(targetUuid, buildKickComponent(p));
-        plugin.getDiscordWebhook().sendPunishment(p);
-        broadcast(p);
+        if(!silent){plugin.getDiscordWebhook().sendPunishment(p);broadcast(p);}
         return p;
     }
 

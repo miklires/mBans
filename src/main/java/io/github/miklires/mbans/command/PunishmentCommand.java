@@ -19,6 +19,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -84,6 +85,7 @@ public class PunishmentCommand implements TabExecutor {
             reasonStart = duration == null ? 1 : 2;
         }
         CommandHelper.Options options = CommandHelper.parseOptions(args, reasonStart);
+        if(!silentAllowed(sender,options))return true;
         String reason = options.text();
         if (!reason.isBlank() && !reason.contains(" ")) {
             Optional<ConfigManager.ReasonTemplate> template = plugin.getConfigManager().getTemplate(reason);
@@ -117,6 +119,7 @@ public class PunishmentCommand implements TabExecutor {
                     message(sender, type.equals("ban") ? "errors.already-banned" : "errors.already-muted");
                     return;
                 }
+                if(isShorter(active.get(),finalDuration)&&!sender.hasPermission("mbans.override.shorten")){message(sender,"errors.cannot-shorten");return;}
                 plugin.getPunishmentRepository().deactivate(active.get().getId(), sender.getName(), "overridden");
                 plugin.getNetworkLogRepository().append(active.get().getId(), "REVOKE",
                         plugin.getConfigManager().getNetworkServerName());
@@ -150,12 +153,13 @@ public class PunishmentCommand implements TabExecutor {
             return true;
         }
         CommandHelper.Options options = CommandHelper.parseOptions(args, 1);
+        if(!silentAllowed(sender,options))return true;
         String reason = options.text();
-        if (!reason.contains(" ")) {
+        if (!reason.isBlank()&&!reason.contains(" ")) {
             Optional<ConfigManager.ReasonTemplate> template = plugin.getConfigManager().getTemplate(reason);
             if (template.isPresent() && template.get().type() == PunishmentType.WARN) reason = template.get().reason();
         }
-        String finalReason = reason;
+        String finalReason = reason.isBlank()?plugin.getConfigManager().getDefaultReason():reason;
         int issuerLevel = plugin.getConfigManager().getImmunityLevel(sender);
         resolve(args[0], target -> {
             if (!canTarget(sender, issuerLevel, target)) return;
@@ -181,7 +185,7 @@ public class PunishmentCommand implements TabExecutor {
     }
 
     private boolean kick(CommandSender sender, String[] args) {
-        if (args.length < 2) {
+        if (args.length < 1) {
             message(sender, "errors.usage-kick");
             return true;
         }
@@ -190,7 +194,8 @@ public class PunishmentCommand implements TabExecutor {
             message(sender, "errors.player-not-found");
             return true;
         }
-        String reason = args.length > 1 ? CommandHelper.joinFrom(args, 1) : plugin.getConfigManager().getDefaultReason();
+        CommandHelper.Options options=CommandHelper.parseOptions(args,1);if(!silentAllowed(sender,options))return true;
+        String reason = options.text().isBlank()?plugin.getConfigManager().getDefaultReason():options.text();
         int issuerLevel = plugin.getConfigManager().getImmunityLevel(sender);
         plugin.getScheduler().entity(player, () -> {
             if (player.hasPermission("mbans.bypass.kick")) {
@@ -201,7 +206,7 @@ public class PunishmentCommand implements TabExecutor {
             if (!canTarget(sender, issuerLevel, target)) return;
             run(sender, () -> {
                 plugin.getPunishmentService().kick(target.uuid(), target.name(), target.ip(), reason,
-                        sender.getName(), CommandHelper.issuerUuid(sender));
+                        sender.getName(), CommandHelper.issuerUuid(sender),options.silent(),options.evidence());
                 message(sender, "success.kicked", MessageUtil.ph("player", target.name()));
             });
         });
@@ -229,20 +234,19 @@ public class PunishmentCommand implements TabExecutor {
     }
 
     private boolean banIp(CommandSender sender, String[] args) {
-        if (args.length < 2) {
+        if (args.length < 1) {
             message(sender, "errors.usage-banip");
             return true;
         }
-        Optional<Duration> first = DurationParser.parse(args[1]);
+        Optional<Duration> first = args.length>1?DurationParser.parse(args[1]):Optional.empty();
         int reasonStart = first.isPresent() ? 2 : 1;
         CommandHelper.Options options = CommandHelper.parseOptions(args, reasonStart);
-        if (options.text().isBlank()) {
-            message(sender, "errors.usage-banip");
-            return true;
-        }
+        if(!silentAllowed(sender,options))return true;
+        if(options.text().isBlank())options=new CommandHelper.Options(options.silent(),options.evidence(),options.lastMessages(),plugin.getConfigManager().getDefaultReason());
+        CommandHelper.Options finalOptions=options;
         if (CommandHelper.isValidIp(args[0])) {
             String ip = CommandHelper.normalizeIp(args[0]);
-            issueIpBan(sender, new Target(null, ip, ip, null, 0), first.orElse(null), options);
+            issueIpBan(sender, new Target(null, ip, ip, null, 0), first.orElse(null), finalOptions);
         } else {
             int issuerLevel = plugin.getConfigManager().getImmunityLevel(sender);
             resolve(args[0], target -> {
@@ -251,7 +255,7 @@ public class PunishmentCommand implements TabExecutor {
                     message(sender, "errors.bypass-ban");
                     return;
                 }
-                issueIpBan(sender, target, first.orElse(null), options);
+                issueIpBan(sender, target, first.orElse(null), finalOptions);
             }, sender);
         }
         return true;
@@ -431,6 +435,9 @@ public class PunishmentCommand implements TabExecutor {
         reply(sender, "You cannot punish a player with an equal or higher immunity level.");
         return false;
     }
+
+    private boolean silentAllowed(CommandSender sender,CommandHelper.Options options){if(!options.silent()||sender.hasPermission("mbans.silent"))return true;message(sender,"errors.no-silent-permission");return false;}
+    private boolean isShorter(Punishment current,Duration replacement){if(current.isPermanent())return replacement!=null;if(replacement==null)return false;return current.getExpiresAt()!=null&&Instant.now().plus(replacement).isBefore(current.getExpiresAt());}
 
     private int page(String[] args, int index) {
         if (args.length <= index) return 1;

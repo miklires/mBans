@@ -160,7 +160,7 @@ server:
   support-link: ""
 
 defaults:
-  # Used when /ban, /mute, /tempban, /tempmute, or /kick has no reason.
+  # Used when a punishment command has no reason.
   reason: "No reason specified"
   ban-kick-message: "<red><bold>You are banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Expires:</green> <white><expires></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Evidence:</green> <white><evidence></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
   permanent-ban-kick-message: "<red><bold>You are permanently banned from <server_name></bold></red>\n\n<green>Reason:</green> <white><reason></white>\n<green>Issued by:</green> <white><issued_by></white>\n<green>Evidence:</green> <white><evidence></white>\n<green>Appeal:</green> <white><appeal_id></white>\n\n<aqua><support_link></aqua>"
