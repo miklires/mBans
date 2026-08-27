@@ -39,7 +39,7 @@ dependencies {
     implementation("com.h2database:h2:2.3.232")
     implementation("com.mysql:mysql-connector-j:9.1.0")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.1")
-    implementation("org.postgresql:postgresql:42.7.5")
+    implementation("org.postgresql:postgresql:42.7.12")
     implementation("org.bstats:bstats-velocity:3.1.0")
     implementation("com.maxmind.geoip2:geoip2:5.2.0")
 }

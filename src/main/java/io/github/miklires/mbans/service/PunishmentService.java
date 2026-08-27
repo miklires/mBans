@@ -298,23 +298,27 @@ public class PunishmentService {
                 : plugin.getConfigManager().getBanKickMessage();
         String expires = p.isPermanent() ? "never" : DurationParser.formatExpiresAt(p.getExpiresAt());
         String formatted = template
-                .replace("<reason>", p.getReason() != null ? p.getReason() : "Not specified")
-                .replace("<expires>", expires)
-                .replace("<issued_by>", p.getIssuedByName())
-                .replace("<appeal_id>", p.getAppealId() == null ? "-" : p.getAppealId())
-                .replace("<evidence>", p.getEvidence() == null ? "-" : p.getEvidence())
-                .replace("<server_name>", plugin.getConfigManager().getServerName())
-                .replace("<support_link>", plugin.getConfigManager().getSupportLink());
+                .replace("<reason>", safe(p.getReason() != null ? p.getReason() : "Not specified"))
+                .replace("<expires>", safe(expires))
+                .replace("<issued_by>", safe(p.getIssuedByName()))
+                .replace("<appeal_id>", safe(p.getAppealId() == null ? "-" : p.getAppealId()))
+                .replace("<evidence>", safe(p.getEvidence() == null ? "-" : p.getEvidence()))
+                .replace("<server_name>", safe(plugin.getConfigManager().getServerName()))
+                .replace("<support_link>", safe(plugin.getConfigManager().getSupportLink()));
         return mm.deserialize(formatted);
     }
 
     public net.kyori.adventure.text.Component buildKickComponent(Punishment p) {
         String template = plugin.getConfigManager().getKickMessage();
         String formatted = template
-                .replace("<reason>", p.getReason() != null ? p.getReason() : "Not specified")
-                .replace("<issued_by>", p.getIssuedByName())
-                .replace("<server_name>", plugin.getConfigManager().getServerName())
-                .replace("<support_link>", plugin.getConfigManager().getSupportLink());
+                .replace("<reason>", safe(p.getReason() != null ? p.getReason() : "Not specified"))
+                .replace("<issued_by>", safe(p.getIssuedByName()))
+                .replace("<server_name>", safe(plugin.getConfigManager().getServerName()))
+                .replace("<support_link>", safe(plugin.getConfigManager().getSupportLink()));
         return mm.deserialize(formatted);
+    }
+
+    private static String safe(String value) {
+        return MiniMessage.miniMessage().escapeTags(value == null ? "" : value);
     }
 }

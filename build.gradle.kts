@@ -42,7 +42,7 @@ dependencies {
     compileOnly("org.xerial:sqlite-jdbc:3.47.1.0")
     compileOnly("com.mysql:mysql-connector-j:9.1.0")
     compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.1")
-    compileOnly("org.postgresql:postgresql:42.7.5")
+    compileOnly("org.postgresql:postgresql:42.7.12")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
