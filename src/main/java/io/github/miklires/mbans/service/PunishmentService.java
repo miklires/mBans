@@ -109,6 +109,7 @@ public class PunishmentService {
         if (duration != null) p.setExpiresAt(Instant.now().plus(duration));
         plugin.getPunishmentRepository().insert(p);
         recordChange(p, "CREATE");
+        plugin.getMuteCacheService().put(p);
         if (!silent) {
             plugin.getDiscordWebhook().sendPunishment(p);
             broadcast(p);
@@ -221,6 +222,7 @@ public class PunishmentService {
         plugin.getPunishmentRepository().deactivate(p.getId(), revokedBy, "mute removed");
         recordChange(p, "REVOKE");
         plugin.getDiscordWebhook().sendRevocation(p, revokedBy);
+        plugin.getMuteCacheService().invalidate(p.getTargetUuid());
         return true;
     }
 

@@ -108,6 +108,10 @@ chat-evidence:
   enabled: true
   buffer-size: 20
 
+mute:
+  # Namespaced commands are normalized, so minecraft:me is covered by me.
+  blocked-commands: [msg, tell, whisper, w, reply, r, me]
+
 geoip:
   enabled: false
   database: GeoLite2-Country.mmdb

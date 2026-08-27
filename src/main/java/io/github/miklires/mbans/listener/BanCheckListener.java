@@ -44,6 +44,8 @@ public class BanCheckListener implements Listener {
                 event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED,
                         plugin.getPunishmentService().buildBanKickComponent(ban.get()));
             }
+            plugin.getMuteCacheService().update(event.getUniqueId(),plugin.getPunishmentRepository()
+                    .findActiveByUuid(event.getUniqueId(),PunishmentType.MUTE));
         } catch (SQLException e) {
             plugin.getLogger().severe("Ban lookup failed: " + e.getMessage());
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,

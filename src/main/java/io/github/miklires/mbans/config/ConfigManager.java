@@ -179,6 +179,7 @@ public class ConfigManager {
     public String getImportPassword(String profile) { return cfg().getString("imports." + profile + ".password", ""); }
     public boolean isChatEvidenceEnabled() { return cfg().getBoolean("chat-evidence.enabled", true); }
     public int getChatEvidenceBufferSize() { return Math.max(1, Math.min(100, cfg().getInt("chat-evidence.buffer-size", 20))); }
+    public Set<String> getMuteBlockedCommands(){return cfg().getStringList("mute.blocked-commands").stream().map(value->value.toLowerCase(Locale.ROOT).replaceFirst("^/","")).collect(Collectors.toUnmodifiableSet());}
     public List<String> getExemptWorlds() { return cfg().getStringList("exemptions.worlds"); }
     public List<String> getExemptIpRanges() { return cfg().getStringList("exemptions.ip-ranges"); }
     public boolean isIpExempt(String ip) {

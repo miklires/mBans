@@ -22,6 +22,7 @@ import io.github.miklires.mbans.service.GeoIpService;
 import io.github.miklires.mbans.service.DataTransferService;
 import io.github.miklires.mbans.service.UpdateChecker;
 import io.github.miklires.mbans.service.CleanupService;
+import io.github.miklires.mbans.service.MuteCacheService;
 import io.github.miklires.mbans.placeholder.MBansExpansion;
 import io.github.miklires.mbans.util.MessageUtil;
 import io.github.miklires.mbans.util.PluginScheduler;
@@ -50,6 +51,7 @@ public class MBans extends JavaPlugin {
     private UpdateChecker updateChecker;
     private CleanupService cleanupService;
     private MUserGui muserGui;
+    private MuteCacheService muteCacheService;
 
     @Override
     public void onEnable() {
@@ -73,6 +75,7 @@ public class MBans extends JavaPlugin {
                 playerRepository = new PlayerRepository(databaseManager);
                 networkLogRepository = new NetworkLogRepository(databaseManager);
                 administrationRepository = new AdministrationRepository(databaseManager);
+                muteCacheService = new MuteCacheService();
                 discordWebhook = new DiscordWebhook(this);
                 punishmentService = new PunishmentService(this);
                 profileResolver = new ProfileResolver(this);
@@ -134,4 +137,5 @@ public class MBans extends JavaPlugin {
     public ChatEvidenceService getChatEvidenceService() { return chatEvidenceService; }
     public GeoIpService getGeoIpService() { return geoIpService; }
     public DataTransferService getDataTransferService() { return dataTransferService; }
+    public MuteCacheService getMuteCacheService() { return muteCacheService; }
 }
