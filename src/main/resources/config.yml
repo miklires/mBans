@@ -31,6 +31,8 @@ discord:
     ban: ""
     ip-ban: ""
     mute: ""
+    ip-mute: ""
+    shadow-mute: ""
     warn: ""
     kick: ""
   appeal-url: ""
@@ -110,7 +112,13 @@ chat-evidence:
 
 mute:
   # Namespaced commands are normalized, so minecraft:me is covered by me.
+  # Keep appeal/help commands out of this list so punished players can contact staff.
   blocked-commands: [msg, tell, whisper, w, reply, r, me]
+
+appeals:
+  # In-game appeals are useful for mutes. Banned players still need server.support-link.
+  in-game-enabled: true
+  max-message-length: 500
 
 geoip:
   enabled: false

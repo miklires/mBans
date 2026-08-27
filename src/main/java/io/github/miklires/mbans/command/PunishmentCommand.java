@@ -6,6 +6,7 @@ import io.github.miklires.mbans.config.ConfigManager;
 import io.github.miklires.mbans.model.Punishment;
 import io.github.miklires.mbans.model.PunishmentType;
 import io.github.miklires.mbans.service.DurationParser;
+import io.github.miklires.mbans.service.PunishmentService;
 import io.github.miklires.mbans.util.MessageUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -45,13 +46,15 @@ public class PunishmentCommand implements TabExecutor {
             return true;
         }
         return switch (name) {
-            case "ban", "mute" -> timedPunishment(sender, name, args, false);
-            case "tempban", "tempmute" -> timedPunishment(sender, name, args, true);
+            case "ban", "mute", "shadowmute" -> timedPunishment(sender, name, args, false);
+            case "tempban", "tempmute", "tempshadowmute" -> timedPunishment(sender, name, args, true);
             case "warn" -> warn(sender, args);
             case "kick" -> kick(sender, args);
-            case "unban", "unmute" -> revoke(sender, name, args);
+            case "unban", "unmute", "unshadowmute" -> revoke(sender, name, args);
             case "banip" -> banIp(sender, args);
             case "unbanip" -> unbanIp(sender, args);
+            case "ipmute" -> muteIp(sender,args);
+            case "unipmute" -> unmuteIp(sender,args);
             case "unwarn" -> unwarn(sender, args);
             case "history" -> history(sender, args, false);
             case "staffhistory" -> history(sender, args, true);
@@ -61,6 +64,7 @@ public class PunishmentCommand implements TabExecutor {
             case "warns" -> warns(sender,args);
             case "punishment" -> punishment(sender,args);
             case "alts" -> alts(sender, args);
+            case "appeal" -> appeal(sender,args);
             default -> true;
         };
     }
@@ -110,7 +114,7 @@ public class PunishmentCommand implements TabExecutor {
                 return;
             }
             run(sender, () -> {
-            PunishmentType punishmentType = type.equals("ban") ? PunishmentType.BAN : PunishmentType.MUTE;
+            PunishmentType punishmentType = typeFromCommand(command);
             String evidence = options.evidence() != null ? options.evidence()
                     : (options.lastMessages() > 0 ? plugin.getChatEvidenceService().snapshot(target.uuid(), options.lastMessages()) : null);
             Optional<Punishment> active = plugin.getPunishmentRepository().findActiveByUuid(target.uuid(), punishmentType);
@@ -123,15 +127,19 @@ public class PunishmentCommand implements TabExecutor {
                 plugin.getPunishmentRepository().deactivate(active.get().getId(), sender.getName(), "overridden");
                 plugin.getNetworkLogRepository().append(active.get().getId(), "REVOKE",
                         plugin.getConfigManager().getNetworkServerName());
+                if(PunishmentService.isMute(active.get().getType()))plugin.getMuteCacheService().invalidatePunishment(active.get().getId());
             }
-            if (type.equals("ban")) {
+            if (punishmentType==PunishmentType.BAN) {
                 plugin.getPunishmentService().ban(target.uuid(), target.name(), target.ip(), finalDuration, finalReason,
                         sender.getName(), CommandHelper.issuerUuid(sender), options.silent(), evidence);
+            } else if(punishmentType==PunishmentType.SHADOW_MUTE) {
+                plugin.getPunishmentService().shadowMute(target.uuid(),target.name(),target.ip(),finalDuration,finalReason,
+                        sender.getName(),CommandHelper.issuerUuid(sender),options.silent(),evidence);
             } else {
                 plugin.getPunishmentService().mute(target.uuid(), target.name(), target.ip(), finalDuration, finalReason,
                         sender.getName(), CommandHelper.issuerUuid(sender), options.silent(), evidence);
             }
-            String key = "success." + (type.equals("ban") ? "banned" : "muted") + (finalDuration == null ? "" : "-temp");
+            String key = "success." + (punishmentType==PunishmentType.BAN?"banned":punishmentType==PunishmentType.SHADOW_MUTE?"shadow-muted":"muted") + (finalDuration == null ? "" : "-temp");
             if (finalDuration == null) {
                 message(sender, key, MessageUtil.ph("player", target.name()), MessageUtil.ph("reason", finalReason));
             } else {
@@ -144,6 +152,7 @@ public class PunishmentCommand implements TabExecutor {
     }
 
     private PunishmentType typeFromCommand(String command) {
+        if(command.contains("shadow"))return PunishmentType.SHADOW_MUTE;
         return command.contains("ban") ? PunishmentType.BAN : PunishmentType.MUTE;
     }
 
@@ -221,9 +230,9 @@ public class PunishmentCommand implements TabExecutor {
         String target = args[0];
         String reason = args.length > 1 ? CommandHelper.joinFrom(args, 1) : "removed";
         run(sender, () -> {
-            boolean done = command.equals("unban")
-                    ? plugin.getPunishmentService().unban(target, sender.getName(), reason)
-                    : plugin.getPunishmentService().unmute(target, sender.getName());
+            boolean done = command.equals("unban")?plugin.getPunishmentService().unban(target,sender.getName(),reason)
+                    :command.equals("unshadowmute")?plugin.getPunishmentService().unshadowMute(target,sender.getName())
+                    :plugin.getPunishmentService().unmute(target,sender.getName());
             if (!done) {
                 message(sender, command.equals("unban") ? "errors.not-banned" : "errors.not-muted");
                 return;
@@ -304,6 +313,24 @@ public class PunishmentCommand implements TabExecutor {
         });
     }
 
+    private boolean muteIp(CommandSender sender,String[]args){if(args.length<1){message(sender,"errors.usage-ipmute");return true;}
+        Optional<Duration> duration=args.length>1?DurationParser.parse(args[1]):Optional.empty();int reasonStart=duration.isPresent()?2:1;
+        CommandHelper.Options options=CommandHelper.parseOptions(args,reasonStart);if(!silentAllowed(sender,options))return true;
+        if(options.text().isBlank())options=new CommandHelper.Options(options.silent(),options.evidence(),options.lastMessages(),plugin.getConfigManager().getDefaultReason());
+        CommandHelper.Options finalOptions=options;if(CommandHelper.isValidIp(args[0]))issueIpMute(sender,new Target(null,args[0],CommandHelper.normalizeIp(args[0]),null,0),duration.orElse(null),finalOptions);
+        else resolve(args[0],target->{if(!canTarget(sender,plugin.getConfigManager().getImmunityLevel(sender),target))return;if(target.online()!=null&&target.online().hasPermission("mbans.bypass.mute")){message(sender,"errors.bypass-mute");return;}issueIpMute(sender,target,duration.orElse(null),finalOptions);},sender);return true;}
+
+    private void issueIpMute(CommandSender sender,Target target,Duration duration,CommandHelper.Options options){if(target.ip()==null){message(sender,"errors.invalid-ip");return;}
+        if(plugin.getConfigManager().isIpExempt(target.ip())){reply(sender,"That IP address is covered by an exempt range.");return;}
+        run(sender,()->{if(plugin.getPunishmentRepository().findActiveByIp(target.ip(),PunishmentType.IP_MUTE).isPresent()){message(sender,"errors.already-muted");return;}
+            plugin.getPunishmentService().ipMute(target.ip(),target.name(),target.uuid(),duration,options.text(),sender.getName(),CommandHelper.issuerUuid(sender),options.silent(),options.evidence());
+            message(sender,"success.ip-muted",MessageUtil.ph("ip",target.ip()),MessageUtil.ph("player",target.name()),MessageUtil.ph("reason",options.text()));});}
+
+    private boolean unmuteIp(CommandSender sender,String[]args){if(args.length<1){message(sender,"errors.usage-unipmute");return true;}
+        if(CommandHelper.isValidIp(args[0]))revokeIpMute(sender,CommandHelper.normalizeIp(args[0]));else resolve(args[0],target->{if(target.ip()==null)message(sender,"errors.invalid-ip");else revokeIpMute(sender,target.ip());},sender);return true;}
+
+    private void revokeIpMute(CommandSender sender,String ip){run(sender,()->{if(!plugin.getPunishmentService().unmuteIp(ip,sender.getName())){message(sender,"errors.not-ip-muted");return;}message(sender,"success.ip-unmuted",MessageUtil.ph("ip",ip));});}
+
     private boolean unwarn(CommandSender sender, String[] args) {
         if (args.length < 2) {
             message(sender, "errors.usage-unwarn");
@@ -354,6 +381,8 @@ public class PunishmentCommand implements TabExecutor {
                     case BAN -> "/unban " + entry.getTargetName() + " ";
                     case IP_BAN -> "/unbanip " + (!viewIp || entry.getTargetIp() == null ? "" : entry.getTargetIp());
                     case MUTE -> "/unmute " + entry.getTargetName();
+                    case IP_MUTE -> "/unipmute " + (!viewIp || entry.getTargetIp() == null ? "" : entry.getTargetIp());
+                    case SHADOW_MUTE -> "/unshadowmute " + entry.getTargetName();
                     case WARN -> "/unwarn " + entry.getTargetName() + " " + entry.getId();
                     case KICK -> "/check " + entry.getTargetName();
                 };
@@ -368,6 +397,8 @@ public class PunishmentCommand implements TabExecutor {
         resolve(args[0], target -> run(sender, () -> {
             Optional<Punishment> ban = plugin.getPunishmentRepository().findActiveByUuid(target.uuid(), PunishmentType.BAN);
             Optional<Punishment> mute = plugin.getPunishmentRepository().findActiveByUuid(target.uuid(), PunishmentType.MUTE);
+            if(mute.isEmpty()&&target.ip()!=null)mute=plugin.getPunishmentRepository().findActiveByIp(target.ip(),PunishmentType.IP_MUTE);
+            if(mute.isEmpty())mute=plugin.getPunishmentRepository().findActiveByUuid(target.uuid(),PunishmentType.SHADOW_MUTE);
             int warns = plugin.getPunishmentRepository().countActiveWarns(target.uuid());
             reply(sender, target.name() + ": ban=" + status(ban) + ", mute=" + status(mute) + ", warnings=" + warns);
         }), sender);
@@ -386,7 +417,7 @@ public class PunishmentCommand implements TabExecutor {
         return true;
     }
 
-    private boolean activeList(CommandSender sender,String[]args,PunishmentType type){int page=page(args,0);run(sender,()->{List<Punishment> entries=plugin.getPunishmentRepository().getActive(type,10,(page-1)*10);if(entries.isEmpty()){reply(sender,"No active "+type.name().toLowerCase(Locale.ROOT)+"s");return;}reply(sender,"Active "+type.name().toLowerCase(Locale.ROOT)+"s (page "+page+")");for(Punishment entry:entries)reply(sender,"#"+entry.getId()+" "+entry.getTargetName()+" | "+entry.getReason()+" | "+DurationParser.formatExpiresAt(entry.getExpiresAt()));});return true;}
+    private boolean activeList(CommandSender sender,String[]args,PunishmentType type){int page=page(args,0);run(sender,()->{List<Punishment> entries=type==PunishmentType.MUTE?plugin.getPunishmentRepository().getActiveMutes(10,(page-1)*10):plugin.getPunishmentRepository().getActive(type,10,(page-1)*10);if(entries.isEmpty()){reply(sender,"No active "+type.name().toLowerCase(Locale.ROOT)+"s");return;}reply(sender,"Active "+type.name().toLowerCase(Locale.ROOT)+"s (page "+page+")");for(Punishment entry:entries)reply(sender,"#"+entry.getId()+" "+entry.getType()+" "+entry.getTargetName()+" | "+entry.getReason()+" | "+DurationParser.formatExpiresAt(entry.getExpiresAt()));});return true;}
 
     private boolean warns(CommandSender sender,String[]args){if(args.length<1){reply(sender,"Usage: /warns <player>");return true;}resolve(args[0],target->run(sender,()->{List<Punishment> entries=plugin.getPunishmentRepository().findActiveWarns(target.uuid());if(entries.isEmpty()){reply(sender,"No active warnings for "+target.name());return;}reply(sender,"Active warnings for "+target.name()+":");for(Punishment entry:entries)reply(sender,"#"+entry.getId()+" "+entry.getReason()+" | "+DATE.format(entry.getIssuedAt()));}),sender);return true;}
 
@@ -413,6 +444,15 @@ public class PunishmentCommand implements TabExecutor {
         }), sender);
         return true;
     }
+
+    private boolean appeal(CommandSender sender,String[]args){if(!(sender instanceof Player player)){message(sender,"errors.player-only");return true;}
+        if(!plugin.getConfigManager().isInGameAppealsEnabled()){message(sender,"errors.appeals-disabled");return true;}
+        if(args.length<2){message(sender,"errors.usage-appeal");return true;}String text=CommandHelper.joinFrom(args,1).strip();
+        if(text.length()>plugin.getConfigManager().getAppealMaxLength()){message(sender,"errors.appeal-too-long",MessageUtil.ph("max",plugin.getConfigManager().getAppealMaxLength()));return true;}
+        run(sender,()->{Optional<Punishment> punishment=plugin.getPunishmentRepository().findByAppealId(args[0]);
+            if(punishment.isEmpty()||punishment.get().getTargetUuid()==null||!punishment.get().getTargetUuid().equals(player.getUniqueId())){message(sender,"errors.appeal-not-found");return;}
+            long id=plugin.getAdministrationRepository().submitAppeal(punishment.get().getId(),player.getUniqueId(),player.getName(),text);
+            if(id<0){message(sender,"errors.appeal-exists");return;}message(sender,"success.appeal-submitted",MessageUtil.ph("id",String.valueOf(id)));});return true;}
 
     private String status(Optional<Punishment> value) {
         return value.map(p -> p.getReason() + " (#" + p.getId() + ")").orElse("none");
@@ -499,13 +539,13 @@ public class PunishmentCommand implements TabExecutor {
                                       @NotNull String alias, @NotNull String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
         if (!sender.hasPermission("mbans.command." + name)) return List.of();
-        if (args.length == 1 && !List.of("banlist","mutelist","punishment").contains(name)) return filter(Bukkit.getOnlinePlayers().stream()
+        if (args.length == 1 && !List.of("banlist","mutelist","punishment","appeal").contains(name)) return filter(Bukkit.getOnlinePlayers().stream()
                 .map(Player::getName).toList(), args[0]);
         if (args.length == 2) {
             List<String> values = switch (name) {
                 case "ban", "tempban" -> concat(plugin.getConfigManager().getDurationPresets(PunishmentType.BAN),
                         plugin.getConfigManager().getTemplateNames(PunishmentType.BAN));
-                case "mute", "tempmute" -> concat(plugin.getConfigManager().getDurationPresets(PunishmentType.MUTE),
+                case "mute", "tempmute", "shadowmute", "tempshadowmute", "ipmute" -> concat(plugin.getConfigManager().getDurationPresets(PunishmentType.MUTE),
                         plugin.getConfigManager().getTemplateNames(PunishmentType.MUTE));
                 case "warn" -> plugin.getConfigManager().getTemplateNames(PunishmentType.WARN);
                 case "unwarn" -> List.of("all");

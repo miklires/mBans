@@ -32,7 +32,7 @@ public class MBansAdminCommand implements TabExecutor {
                              @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
             sender.sendMessage(Component.text("mBans " + plugin.getPluginMeta().getVersion()));
-            sender.sendMessage(Component.text("/mbans reload|rollback|revoke|reason|allow|note|notes|stats|import|export"));
+            sender.sendMessage(Component.text("/mbans reload|rollback|revoke|reason|allow|note|notes|stats|appeals|appeal|import|export"));
             return true;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
@@ -45,6 +45,8 @@ public class MBansAdminCommand implements TabExecutor {
             case "note" -> note(sender, args);
             case "notes" -> notes(sender, args);
             case "stats" -> stats(sender, args);
+            case "appeals" -> appeals(sender,args);
+            case "appeal" -> reviewAppeal(sender,args);
             case "import" -> importData(sender, args);
             case "export" -> exportData(sender, args);
             default -> {
@@ -80,6 +82,13 @@ public class MBansAdminCommand implements TabExecutor {
                 List<Long> ids = plugin.getAdministrationRepository().rollback(staff, Instant.now().minus(window), actor);
                 for (long id : ids) {
                     plugin.getNetworkLogRepository().append(id, "REVOKE", plugin.getConfigManager().getNetworkServerName());
+                    plugin.getPunishmentRepository().findById(id).ifPresent(punishment -> {
+                        try {
+                            plugin.getPunishmentService().refreshMuteState(punishment);
+                        } catch (SQLException error) {
+                            plugin.getLogger().warning("Could not refresh mute state after rollback for #" + id + ": " + error.getMessage());
+                        }
+                    });
                 }
                 reply(sender, "Rolled back " + ids.size() + " punishments issued by " + staff);
             } catch (SQLException e) {
@@ -267,6 +276,12 @@ public class MBansAdminCommand implements TabExecutor {
         return false;
     }
 
+    private boolean appeals(CommandSender sender,String[]args){if(!check(sender,"mbans.command.appeals"))return true;int page=1;if(args.length>1)try{page=Math.max(1,Integer.parseInt(args[1]));}catch(NumberFormatException ignored){}int finalPage=page;
+        plugin.getScheduler().async(()->{try{List<AdministrationRepository.Appeal> appeals=plugin.getAdministrationRepository().openAppeals(10,(finalPage-1)*10);if(appeals.isEmpty()){reply(sender,"No open appeals.");return;}reply(sender,"Open appeals (page "+finalPage+"):");for(AdministrationRepository.Appeal appeal:appeals)reply(sender,"#"+appeal.id()+" punishment #"+appeal.punishmentId()+" | "+appeal.playerName()+" | "+appeal.message());}catch(SQLException error){fail(sender,"Could not load appeals",error);}});return true;}
+
+    private boolean reviewAppeal(CommandSender sender,String[]args){if(!check(sender,"mbans.command.appeals"))return true;if(args.length<3){reply(sender,"Usage: /mbans appeal <id> <accept|deny> [note]");return true;}long id;try{id=Long.parseLong(args[1]);}catch(NumberFormatException error){reply(sender,"Invalid appeal ID");return true;}String decision=args[2].toLowerCase(Locale.ROOT);if(!decision.equals("accept")&&!decision.equals("deny")){reply(sender,"Decision must be accept or deny");return true;}String note=args.length>3?CommandHelper.joinFrom(args,3):"";
+        plugin.getScheduler().async(()->{try{Optional<AdministrationRepository.Appeal> found=plugin.getAdministrationRepository().appeal(id);if(found.isEmpty()||!found.get().status().equals("OPEN")){reply(sender,"Open appeal not found");return;}if(decision.equals("accept"))plugin.getPunishmentService().revokeById(found.get().punishmentId(),sender.getName(),"appeal accepted");boolean done=plugin.getAdministrationRepository().reviewAppeal(id,decision.equals("accept")?"ACCEPTED":"DENIED",sender.getName(),note);reply(sender,done?"Appeal #"+id+" "+(decision.equals("accept")?"accepted":"denied"):"Appeal was already reviewed");}catch(SQLException error){fail(sender,"Could not review appeal",error);}});return true;}
+
     private void reply(CommandSender sender, String text) {
         plugin.getScheduler().global(() -> sender.sendMessage(Component.text(text)));
     }
@@ -279,12 +294,14 @@ public class MBansAdminCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                       @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("reload", "rollback", "revoke", "reason", "allow", "note", "notes", "stats", "import", "export").stream()
+        if (args.length == 1) return List.of("reload", "rollback", "revoke", "reason", "allow", "note", "notes", "stats", "appeals", "appeal", "import", "export").stream()
                 .filter(value -> value.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
         if (args.length == 2 && args[0].equalsIgnoreCase("import")) return List.of("vanilla", "litebans",
                 "libertybans", "advancedban", "banmanager").stream()
                 .filter(value -> value.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
         if (args.length == 3 && args[0].equalsIgnoreCase("export")) return List.of("json", "csv").stream()
+                .filter(value -> value.startsWith(args[2].toLowerCase(Locale.ROOT))).toList();
+        if (args.length == 3 && args[0].equalsIgnoreCase("appeal")) return List.of("accept","deny").stream()
                 .filter(value -> value.startsWith(args[2].toLowerCase(Locale.ROOT))).toList();
         return List.of();
     }

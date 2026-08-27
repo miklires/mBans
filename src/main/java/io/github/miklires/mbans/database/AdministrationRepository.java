@@ -105,7 +105,7 @@ public class AdministrationRepository {
         String sql = "SELECT COUNT(*) AS total, "
                 + "SUM(CASE WHEN active = FALSE AND revoked_at IS NOT NULL THEN 1 ELSE 0 END) AS revoked, "
                 + "SUM(CASE WHEN type = 'BAN' THEN 1 ELSE 0 END) AS bans, "
-                + "SUM(CASE WHEN type = 'MUTE' THEN 1 ELSE 0 END) AS mutes, "
+                + "SUM(CASE WHEN type IN ('MUTE','IP_MUTE','SHADOW_MUTE') THEN 1 ELSE 0 END) AS mutes, "
                 + "SUM(CASE WHEN type = 'WARN' THEN 1 ELSE 0 END) AS warns "
                 + ", AVG(CASE WHEN expires_at IS NOT NULL THEN expires_at - issued_at ELSE NULL END) AS avg_duration "
                 + "FROM mbans_punishments WHERE LOWER(issued_by_name) = LOWER(?)";
@@ -123,7 +123,29 @@ public class AdministrationRepository {
         return new StaffStats(0, 0, 0, 0, 0, 0.0, 0.0);
     }
 
+    public long submitAppeal(long punishmentId,UUID playerUuid,String playerName,String message)throws SQLException{
+        String existing="SELECT id FROM mbans_appeals WHERE punishment_id=? AND player_uuid=? LIMIT 1";
+        try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(existing)){ps.setLong(1,punishmentId);ps.setString(2,playerUuid.toString());try(ResultSet rs=ps.executeQuery()){if(rs.next())return -1;}}
+        String sql="INSERT INTO mbans_appeals (punishment_id,player_uuid,player_name,message,status,created_at) VALUES (?,?,?,?,?,?)";
+        try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)){ps.setLong(1,punishmentId);ps.setString(2,playerUuid.toString());ps.setString(3,playerName);ps.setString(4,message);ps.setString(5,"OPEN");ps.setLong(6,Instant.now().getEpochSecond());ps.executeUpdate();try(ResultSet rs=ps.getGeneratedKeys()){return rs.next()?rs.getLong(1):0;}}
+    }
+
+    public List<Appeal> openAppeals(int limit,int offset)throws SQLException{
+        List<Appeal> out=new ArrayList<>();String sql="SELECT * FROM mbans_appeals WHERE status='OPEN' ORDER BY created_at ASC LIMIT ? OFFSET ?";
+        try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setInt(1,limit);ps.setInt(2,offset);try(ResultSet rs=ps.executeQuery()){while(rs.next())out.add(mapAppeal(rs));}}return out;
+    }
+
+    public java.util.Optional<Appeal> appeal(long id)throws SQLException{try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement("SELECT * FROM mbans_appeals WHERE id=?")){ps.setLong(1,id);try(ResultSet rs=ps.executeQuery()){return rs.next()?java.util.Optional.of(mapAppeal(rs)):java.util.Optional.empty();}}}
+
+    public boolean reviewAppeal(long id,String status,String reviewer,String note)throws SQLException{
+        String sql="UPDATE mbans_appeals SET status=?,reviewed_by=?,reviewed_at=?,review_note=? WHERE id=? AND status='OPEN'";
+        try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setString(1,status);ps.setString(2,reviewer);ps.setLong(3,Instant.now().getEpochSecond());ps.setString(4,note);ps.setLong(5,id);return ps.executeUpdate()==1;}
+    }
+
+    private Appeal mapAppeal(ResultSet rs)throws SQLException{return new Appeal(rs.getLong("id"),rs.getLong("punishment_id"),UUID.fromString(rs.getString("player_uuid")),rs.getString("player_name"),rs.getString("message"),rs.getString("status"),Instant.ofEpochSecond(rs.getLong("created_at")));}
+
     public record StaffStats(int total, int revoked, int bans, int mutes, int warns,
                              double averageDurationSeconds, double revocationRate) {}
     public record StaffNote(long id, String author, String text, Instant createdAt) {}
+    public record Appeal(long id,long punishmentId,UUID playerUuid,String playerName,String message,String status,Instant createdAt){}
 }

@@ -51,8 +51,11 @@ public class NetworkSyncService {
         Optional<Punishment> found = plugin.getPunishmentRepository().findById(event.punishmentId());
         if (found.isEmpty()) return;
         Punishment punishment = found.get();
-        if (punishment.getType()==PunishmentType.MUTE&&punishment.getTargetUuid()!=null) {
-            plugin.getMuteCacheService().update(punishment.getTargetUuid(),punishment.isActive()?Optional.of(punishment):Optional.empty());
+        if (PunishmentService.isMute(punishment.getType())) {
+            plugin.getMuteCacheService().invalidatePunishment(punishment.getId());
+            if(punishment.getType()!=PunishmentType.IP_MUTE&&punishment.getTargetUuid()!=null)
+                plugin.getPunishmentService().refreshMuteState(punishment.getTargetUuid(),punishment.getTargetIp());
+            if(punishment.getType()==PunishmentType.IP_MUTE)plugin.getPunishmentService().refreshOnlineMuteState(punishment.getTargetIp());
         }
         if (!"CREATE".equals(event.action()) || !punishment.isActive()) return;
         plugin.getPunishmentService().broadcast(punishment);

@@ -235,6 +235,9 @@ public final class MUserGui implements Listener, TabExecutor {
         String command = switch (entry.getType()) {
             case BAN -> "unban " + entry.getTargetName() + " GUI";
             case MUTE -> "unmute " + entry.getTargetName();
+            case SHADOW_MUTE -> "unshadowmute " + entry.getTargetName();
+            case IP_MUTE -> viewer.hasPermission("mbans.view.ip") && entry.getTargetIp() != null
+                    ? "unipmute " + entry.getTargetIp() : null;
             case WARN -> "unwarn " + entry.getTargetName() + " " + entry.getId();
             case IP_BAN -> viewer.hasPermission("mbans.view.ip") && entry.getTargetIp() != null
                     ? "unbanip " + entry.getTargetIp() : null;

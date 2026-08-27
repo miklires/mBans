@@ -27,6 +27,11 @@ permissions:
   mbans.command.mute: {default: op}
   mbans.command.tempmute: {default: op}
   mbans.command.unmute: {default: op}
+  mbans.command.ipmute: {default: op}
+  mbans.command.unipmute: {default: op}
+  mbans.command.shadowmute: {default: op}
+  mbans.command.tempshadowmute: {default: op}
+  mbans.command.unshadowmute: {default: op}
   mbans.command.kick: {default: op}
   mbans.command.warn: {default: op}
   mbans.command.unwarn: {default: op}
@@ -36,6 +41,8 @@ permissions:
   mbans.command.warns: {default: op}
   mbans.command.punishment: {default: op}
   mbans.command.alts: {default: op}
+  mbans.command.appeal: {default: true}
+  mbans.command.appeals: {default: op}
   mbans.command.rollback: {default: op}
   mbans.command.revoke: {default: op}
   mbans.command.reason: {default: op}
@@ -48,6 +55,7 @@ permissions:
   mbans.command.muser: {default: op}
   mbans.view.ip: {default: op}
   mbans.notify.alts: {default: op}
+  mbans.notify.shadow: {default: op}
   mbans.override: {default: op}
   mbans.override.shorten: {default: false}
   mbans.silent: {default: op}
@@ -72,6 +80,11 @@ permissions:
       mbans.command.mute: true
       mbans.command.tempmute: true
       mbans.command.unmute: true
+      mbans.command.ipmute: true
+      mbans.command.unipmute: true
+      mbans.command.shadowmute: true
+      mbans.command.tempshadowmute: true
+      mbans.command.unshadowmute: true
       mbans.command.kick: true
       mbans.command.warn: true
       mbans.command.unwarn: true
@@ -81,6 +94,7 @@ permissions:
       mbans.command.warns: true
       mbans.command.punishment: true
       mbans.command.alts: true
+      mbans.command.appeals: true
       mbans.command.rollback: true
       mbans.command.revoke: true
       mbans.command.reason: true
@@ -93,6 +107,7 @@ permissions:
       mbans.command.muser: true
       mbans.view.ip: true
       mbans.notify.alts: true
+      mbans.notify.shadow: true
       mbans.override: true
       mbans.override.shorten: true
       mbans.silent: true

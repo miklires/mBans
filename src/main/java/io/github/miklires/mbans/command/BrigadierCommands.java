@@ -37,6 +37,11 @@ public final class BrigadierCommands {
         command(commands, "mute", "Permanently or temporarily mute a player", List.of(), punishments);
         command(commands, "tempmute", "Temporarily mute a player", List.of(), punishments);
         command(commands, "unmute", "Remove a player mute", List.of(), punishments);
+        command(commands, "ipmute", "Mute every account using a player or IP address", List.of(), punishments);
+        command(commands, "unipmute", "Remove an IP mute", List.of(), punishments);
+        command(commands, "shadowmute", "Silently isolate a player's chat", List.of(), punishments);
+        command(commands, "tempshadowmute", "Temporarily isolate a player's chat", List.of(), punishments);
+        command(commands, "unshadowmute", "Remove a shadow mute", List.of(), punishments);
         command(commands, "kick", "Kick an online player", List.of(), punishments);
         command(commands, "warn", "Warn a player", List.of(), punishments);
         command(commands, "unwarn", "Remove a warning", List.of(), punishments);
@@ -46,6 +51,7 @@ public final class BrigadierCommands {
         command(commands, "warns", "View active warnings", List.of(), punishments);
         command(commands, "punishment", "Inspect a punishment by ID", List.of("punishinfo"), punishments);
         command(commands, "alts", "Find accounts that share an IP address", List.of("dupeip"), punishments);
+        command(commands, "appeal", "Submit an in-game punishment appeal", List.of(), punishments);
         command(commands, "mbans", "Manage mBans", List.of(), admin, source -> true);
         command(commands, "muser", "Open the moderation menu for a player", List.of(), muser);
     }

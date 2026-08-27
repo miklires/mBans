@@ -105,16 +105,21 @@ public class PunishmentRepository {
     }
 
     public Optional<Punishment> findActiveIpBan(String ip) throws SQLException {
+        return findActiveByIp(ip, PunishmentType.IP_BAN);
+    }
+
+    public Optional<Punishment> findActiveByIp(String ip, PunishmentType type) throws SQLException {
         String sql = """
             SELECT * FROM mbans_punishments
-            WHERE target_ip = ? AND type = 'IP_BAN' AND active = TRUE
+            WHERE target_ip = ? AND type = ? AND active = TRUE
               AND (expires_at IS NULL OR expires_at > ?)
             ORDER BY issued_at DESC LIMIT 1
             """;
         try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+            PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, ip);
-            ps.setLong(2, Instant.now().getEpochSecond());
+            ps.setString(2, type.name());
+            ps.setLong(3, Instant.now().getEpochSecond());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Punishment p = map(rs);
@@ -135,6 +140,11 @@ public class PunishmentRepository {
             }
         }
         return Optional.empty();
+    }
+
+    public Optional<Punishment> findByAppealId(String appealId)throws SQLException{
+        String sql="SELECT * FROM mbans_punishments WHERE UPPER(appeal_id)=UPPER(?) ORDER BY issued_at DESC LIMIT 1";
+        try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setString(1,appealId);try(ResultSet rs=ps.executeQuery()){return rs.next()?Optional.of(map(rs)):Optional.empty();}}
     }
 
     public boolean existsEquivalent(PunishmentType type, UUID uuid, String name, Instant issuedAt, String reason) throws SQLException {
@@ -303,6 +313,11 @@ public class PunishmentRepository {
     public List<Punishment> getActive(PunishmentType type,int limit,int offset)throws SQLException{
         String sql="SELECT * FROM mbans_punishments WHERE type=? AND active=TRUE AND (expires_at IS NULL OR expires_at>?) ORDER BY issued_at DESC LIMIT ? OFFSET ?";
         List<Punishment> out=new ArrayList<>();try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setString(1,type.name());ps.setLong(2,Instant.now().getEpochSecond());ps.setInt(3,limit);ps.setInt(4,offset);try(ResultSet rs=ps.executeQuery()){while(rs.next())out.add(map(rs));}}return out;
+    }
+
+    public List<Punishment> getActiveMutes(int limit,int offset)throws SQLException{
+        String sql="SELECT * FROM mbans_punishments WHERE type IN ('MUTE','IP_MUTE','SHADOW_MUTE') AND active=TRUE AND (expires_at IS NULL OR expires_at>?) ORDER BY issued_at DESC LIMIT ? OFFSET ?";
+        List<Punishment> out=new ArrayList<>();try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setLong(1,Instant.now().getEpochSecond());ps.setInt(2,limit);ps.setInt(3,offset);try(ResultSet rs=ps.executeQuery()){while(rs.next())out.add(map(rs));}}return out;
     }
 
     public void deactivate(long id, String revokedBy, String revokeReason) throws SQLException {

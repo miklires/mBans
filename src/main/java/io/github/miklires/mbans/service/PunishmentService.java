@@ -117,6 +117,23 @@ public class PunishmentService {
         return p;
     }
 
+    public Punishment shadowMute(UUID targetUuid,String targetName,String targetIp,Duration duration,String reason,
+                                 String issuerName,UUID issuerUuid,boolean silent,String evidence)throws SQLException{
+        Punishment p=newBase(PunishmentType.SHADOW_MUTE,targetUuid,targetName,targetIp,reason,issuerName,issuerUuid);
+        p.setSilent(silent);p.setEvidence(evidence);if(duration!=null)p.setExpiresAt(Instant.now().plus(duration));
+        plugin.getPunishmentRepository().insert(p);recordChange(p,"CREATE");
+        if(plugin.getMuteCacheService().get(targetUuid).isEmpty())plugin.getMuteCacheService().put(p);
+        if(!silent){plugin.getDiscordWebhook().sendPunishment(p);broadcast(p);}return p;
+    }
+
+    public Punishment ipMute(String ip,String targetName,UUID targetUuid,Duration duration,String reason,
+                             String issuerName,UUID issuerUuid,boolean silent,String evidence)throws SQLException{
+        Punishment p=newBase(PunishmentType.IP_MUTE,targetUuid,targetName,ip,reason,issuerName,issuerUuid);
+        p.setSilent(silent);p.setEvidence(evidence);if(duration!=null)p.setExpiresAt(Instant.now().plus(duration));
+        plugin.getPunishmentRepository().insert(p);recordChange(p,"CREATE");refreshOnlineMuteState(ip);
+        if(!silent){plugin.getDiscordWebhook().sendPunishment(p);broadcast(p);}return p;
+    }
+
     public Punishment kick(Player target, String reason, String issuerName, UUID issuerUuid) throws SQLException {
         String ip = target.getAddress() == null ? null : target.getAddress().getAddress().getHostAddress();
         return kick(target.getUniqueId(), target.getName(), ip, reason, issuerName, issuerUuid);
@@ -226,8 +243,25 @@ public class PunishmentService {
         plugin.getPunishmentRepository().deactivate(p.getId(), revokedBy, "mute removed");
         recordChange(p, "REVOKE");
         plugin.getDiscordWebhook().sendRevocation(p, revokedBy);
-        plugin.getMuteCacheService().invalidate(p.getTargetUuid());
+        plugin.getMuteCacheService().invalidatePunishment(p.getId());
+        refreshMuteState(p.getTargetUuid(),p.getTargetIp());
         return true;
+    }
+
+    public boolean unshadowMute(String name,String revokedBy)throws SQLException{return unmuteType(name,PunishmentType.SHADOW_MUTE,revokedBy);}
+
+    private boolean unmuteType(String name,PunishmentType type,String revokedBy)throws SQLException{
+        Optional<Punishment> found=plugin.getPunishmentRepository().findActiveByName(name,type);if(found.isEmpty())return false;
+        Punishment p=found.get();plugin.getPunishmentRepository().deactivate(p.getId(),revokedBy,"mute removed");
+        recordChange(p,"REVOKE");plugin.getMuteCacheService().invalidatePunishment(p.getId());
+        refreshMuteState(p.getTargetUuid(),p.getTargetIp());plugin.getDiscordWebhook().sendRevocation(p,revokedBy);return true;
+    }
+
+    public boolean unmuteIp(String ip,String revokedBy)throws SQLException{
+        Optional<Punishment> found=plugin.getPunishmentRepository().findActiveByIp(ip,PunishmentType.IP_MUTE);
+        if(found.isEmpty())return false;Punishment p=found.get();plugin.getPunishmentRepository().deactivate(p.getId(),revokedBy,"IP mute removed");
+        recordChange(p,"REVOKE");plugin.getMuteCacheService().invalidatePunishment(p.getId());
+        refreshOnlineMuteState(ip);plugin.getDiscordWebhook().sendRevocation(p,revokedBy);return true;
     }
 
     public boolean unwarn(UUID targetUuid, long warnId, String revokedBy) throws SQLException {
@@ -246,9 +280,36 @@ public class PunishmentService {
         plugin.getPunishmentRepository().deactivateAllWarns(targetUuid, revokedBy);
     }
 
-    public boolean revokeById(long id,String revokedBy,String reason)throws SQLException{Optional<Punishment> found=plugin.getPunishmentRepository().findById(id);if(found.isEmpty()||!found.get().isActive())return false;Punishment punishment=found.get();plugin.getPunishmentRepository().deactivate(id,revokedBy,reason);recordChange(punishment,"REVOKE");if(punishment.getType()==PunishmentType.MUTE)plugin.getMuteCacheService().invalidate(punishment.getTargetUuid());plugin.getDiscordWebhook().sendRevocation(punishment,revokedBy);return true;}
+    public boolean revokeById(long id,String revokedBy,String reason)throws SQLException{Optional<Punishment> found=plugin.getPunishmentRepository().findById(id);if(found.isEmpty()||!found.get().isActive())return false;Punishment punishment=found.get();plugin.getPunishmentRepository().deactivate(id,revokedBy,reason);recordChange(punishment,"REVOKE");refreshMuteState(punishment);plugin.getDiscordWebhook().sendRevocation(punishment,revokedBy);return true;}
 
-    public boolean changeReason(long id,String reason)throws SQLException{return plugin.getPunishmentRepository().updateReason(id,reason);}
+    public boolean changeReason(long id,String reason)throws SQLException{
+        if(!plugin.getPunishmentRepository().updateReason(id,reason))return false;
+        Optional<Punishment> updated=plugin.getPunishmentRepository().findById(id);
+        updated.ifPresent(plugin.getMuteCacheService()::replace);
+        return true;
+    }
+
+    public void refreshMuteState(Punishment punishment)throws SQLException{
+        if(!isMute(punishment.getType()))return;
+        plugin.getMuteCacheService().invalidatePunishment(punishment.getId());
+        if(punishment.getType()==PunishmentType.IP_MUTE){refreshOnlineMuteState(punishment.getTargetIp());return;}
+        refreshMuteState(punishment.getTargetUuid(),punishment.getTargetIp());
+    }
+
+    public void refreshMuteState(UUID uuid,String ip)throws SQLException{
+        if(uuid==null)return;Optional<Punishment> active=plugin.getPunishmentRepository().findActiveByUuid(uuid,PunishmentType.MUTE);
+        if(active.isEmpty()&&ip!=null)active=plugin.getPunishmentRepository().findActiveByIp(ip,PunishmentType.IP_MUTE);
+        if(active.isEmpty())active=plugin.getPunishmentRepository().findActiveByUuid(uuid,PunishmentType.SHADOW_MUTE);
+        plugin.getMuteCacheService().update(uuid,active);
+    }
+
+    public void refreshOnlineMuteState(String ip){if(ip==null)return;plugin.getScheduler().global(()->{
+        List<OnlineMuteTarget> targets=Bukkit.getOnlinePlayers().stream().filter(player->player.getAddress()!=null&&ip.equals(player.getAddress().getAddress().getHostAddress()))
+                .map(player->new OnlineMuteTarget(player.getUniqueId(),ip)).toList();
+        plugin.getScheduler().async(()->targets.forEach(target->{try{refreshMuteState(target.uuid(),target.ip());}catch(SQLException error){plugin.getLogger().warning("Could not refresh mute state for "+target.uuid()+": "+error.getMessage());}}));
+    });}
+    private record OnlineMuteTarget(UUID uuid,String ip){}
+    public static boolean isMute(PunishmentType type){return type==PunishmentType.MUTE||type==PunishmentType.IP_MUTE||type==PunishmentType.SHADOW_MUTE;}
 
     public List<Punishment> getActiveWarns(UUID uuid) throws SQLException {
         return plugin.getPunishmentRepository().findActiveWarns(uuid);
@@ -285,8 +346,9 @@ public class PunishmentService {
     public void broadcast(Punishment punishment) {
         if (punishment.isSilent() || !plugin.getConfigManager().isBroadcastEnabled()) return;
         String key = "broadcast." + punishment.getType().name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
-        plugin.getScheduler().global(() -> Bukkit.getOnlinePlayers().forEach(player ->
-                plugin.getMessageUtil().send(player, key,
+        plugin.getScheduler().global(() -> Bukkit.getOnlinePlayers().stream()
+                .filter(player->punishment.getType()!=PunishmentType.SHADOW_MUTE||player.hasPermission("mbans.notify.shadow"))
+                .forEach(player -> plugin.getMessageUtil().send(player, key,
                         io.github.miklires.mbans.util.MessageUtil.ph("player", punishment.getTargetName()),
                         io.github.miklires.mbans.util.MessageUtil.ph("reason", punishment.getReason()),
                         io.github.miklires.mbans.util.MessageUtil.ph("issuer", punishment.getIssuedByName()),

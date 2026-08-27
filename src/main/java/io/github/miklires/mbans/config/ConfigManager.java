@@ -180,6 +180,8 @@ public class ConfigManager {
     public boolean isChatEvidenceEnabled() { return cfg().getBoolean("chat-evidence.enabled", true); }
     public int getChatEvidenceBufferSize() { return Math.max(1, Math.min(100, cfg().getInt("chat-evidence.buffer-size", 20))); }
     public Set<String> getMuteBlockedCommands(){return cfg().getStringList("mute.blocked-commands").stream().map(value->value.toLowerCase(Locale.ROOT).replaceFirst("^/","")).collect(Collectors.toUnmodifiableSet());}
+    public boolean isInGameAppealsEnabled(){return cfg().getBoolean("appeals.in-game-enabled",true);}
+    public int getAppealMaxLength(){return Math.max(32,Math.min(2000,cfg().getInt("appeals.max-message-length",500)));}
     public List<String> getExemptWorlds() { return cfg().getStringList("exemptions.worlds"); }
     public List<String> getExemptIpRanges() { return cfg().getStringList("exemptions.ip-ranges"); }
     public boolean isIpExempt(String ip) {

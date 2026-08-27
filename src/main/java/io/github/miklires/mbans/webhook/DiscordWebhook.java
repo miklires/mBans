@@ -42,7 +42,8 @@ public class DiscordWebhook {
     private String buildEmbed(Punishment p, boolean revocation) {
         int color = switch (p.getType()) {
             case BAN, IP_BAN -> 0xE74C3C;
-            case MUTE -> 0xF1C40F;
+            case MUTE, IP_MUTE -> 0xF1C40F;
+            case SHADOW_MUTE -> 0x7F8C8D;
             case KICK -> 0x95A5A6;
             case WARN -> 0x3498DB;
         };
@@ -50,6 +51,8 @@ public class DiscordWebhook {
             case BAN -> "Ban";
             case IP_BAN -> "IP ban";
             case MUTE -> "Mute";
+            case IP_MUTE -> "IP mute";
+            case SHADOW_MUTE -> "Shadow mute";
             case KICK -> "Kick";
             case WARN -> "Warning";
         };
@@ -97,6 +100,8 @@ public class DiscordWebhook {
             case BAN -> "Ban removed";
             case IP_BAN -> "IP ban removed";
             case MUTE -> "Mute removed";
+            case IP_MUTE -> "IP mute removed";
+            case SHADOW_MUTE -> "Shadow mute removed";
             default -> "Punishment removed";
         };
 
