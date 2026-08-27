@@ -18,10 +18,14 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
+      - name: Read project version
+        id: project
+        shell: bash
+        run: echo "version=$(./gradlew properties -q | awk '/^version:/{print $2}')" >> "$GITHUB_OUTPUT"
       - run: ./gradlew clean build :velocity:build --no-daemon
       - uses: actions/upload-artifact@v7
         with:
           name: mbans-${{ github.sha }}
           path: |
-            build/libs/mBans-1.0.0.jar
-            velocity/build/libs/mBans-Velocity-1.0.0.jar
+            build/libs/mBans-${{ steps.project.outputs.version }}.jar
+            velocity/build/libs/mBans-Velocity-${{ steps.project.outputs.version }}.jar
