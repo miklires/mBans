@@ -449,9 +449,10 @@ public class PunishmentCommand implements TabExecutor {
         if(!plugin.getConfigManager().isInGameAppealsEnabled()){message(sender,"errors.appeals-disabled");return true;}
         if(args.length<2){message(sender,"errors.usage-appeal");return true;}String text=CommandHelper.joinFrom(args,1).strip();
         if(text.length()>plugin.getConfigManager().getAppealMaxLength()){message(sender,"errors.appeal-too-long",MessageUtil.ph("max",plugin.getConfigManager().getAppealMaxLength()));return true;}
+        UUID playerUuid=player.getUniqueId();String playerName=player.getName();
         run(sender,()->{Optional<Punishment> punishment=plugin.getPunishmentRepository().findByAppealId(args[0]);
-            if(punishment.isEmpty()||punishment.get().getTargetUuid()==null||!punishment.get().getTargetUuid().equals(player.getUniqueId())){message(sender,"errors.appeal-not-found");return;}
-            long id=plugin.getAdministrationRepository().submitAppeal(punishment.get().getId(),player.getUniqueId(),player.getName(),text);
+            if(punishment.isEmpty()||punishment.get().getTargetUuid()==null||!punishment.get().getTargetUuid().equals(playerUuid)){message(sender,"errors.appeal-not-found");return;}
+            long id=plugin.getAdministrationRepository().submitAppeal(punishment.get().getId(),playerUuid,playerName,text);
             if(id<0){message(sender,"errors.appeal-exists");return;}message(sender,"success.appeal-submitted",MessageUtil.ph("id",String.valueOf(id)));});return true;}
 
     private String status(Optional<Punishment> value) {
