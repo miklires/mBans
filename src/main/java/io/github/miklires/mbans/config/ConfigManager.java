@@ -196,6 +196,7 @@ public class ConfigManager {
 
     public String getServerName() { return cfg().getString("server.display-name", "Minecraft Server"); }
     public String getSupportLink() { return cfg().getString("server.support-link", ""); }
+    public String getDefaultReason() { return cfg().getString("defaults.reason", "No reason specified"); }
     public String getBanKickMessage() { return cfg().getString("defaults.ban-kick-message", ""); }
     public String getPermanentBanKickMessage() { return cfg().getString("defaults.permanent-ban-kick-message", ""); }
     public String getKickMessage() { return cfg().getString("defaults.kick-message", ""); }

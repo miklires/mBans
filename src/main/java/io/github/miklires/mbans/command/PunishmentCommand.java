@@ -63,7 +63,7 @@ public class PunishmentCommand implements TabExecutor {
 
     private boolean timedPunishment(CommandSender sender, String command, String[] args, boolean durationRequired) {
         int reasonStart = durationRequired ? 2 : 1;
-        if (args.length <= reasonStart) {
+        if (args.length < 1 || (durationRequired && args.length < 2)) {
             plugin.getMessageUtil().send(sender, "errors.usage-" + command);
             return true;
         }
@@ -82,7 +82,7 @@ public class PunishmentCommand implements TabExecutor {
         }
         CommandHelper.Options options = CommandHelper.parseOptions(args, reasonStart);
         String reason = options.text();
-        if (!reason.contains(" ")) {
+        if (!reason.isBlank() && !reason.contains(" ")) {
             Optional<ConfigManager.ReasonTemplate> template = plugin.getConfigManager().getTemplate(reason);
             if (template.isPresent()) {
                 PunishmentType expected = typeFromCommand(command);
@@ -92,10 +92,7 @@ public class PunishmentCommand implements TabExecutor {
                 }
             }
         }
-        if (reason.isBlank()) {
-            plugin.getMessageUtil().send(sender, "errors.usage-" + command);
-            return true;
-        }
+        if (reason.isBlank()) reason = plugin.getConfigManager().getDefaultReason();
         Duration finalDuration = duration;
         String finalReason = reason;
         String type = command.contains("ban") ? "ban" : "mute";
@@ -145,7 +142,7 @@ public class PunishmentCommand implements TabExecutor {
     }
 
     private boolean warn(CommandSender sender, String[] args) {
-        if (args.length < 2) {
+        if (args.length < 1) {
             message(sender, "errors.usage-warn");
             return true;
         }
@@ -190,7 +187,7 @@ public class PunishmentCommand implements TabExecutor {
             message(sender, "errors.player-not-found");
             return true;
         }
-        String reason = CommandHelper.joinFrom(args, 1);
+        String reason = args.length > 1 ? CommandHelper.joinFrom(args, 1) : plugin.getConfigManager().getDefaultReason();
         int issuerLevel = plugin.getConfigManager().getImmunityLevel(sender);
         plugin.getScheduler().entity(player, () -> {
             if (player.hasPermission("mbans.bypass.kick")) {
