@@ -56,7 +56,13 @@ Chat evidence and full IP addresses are personal data. Define an appropriate ret
 
 ## Mute enforcement
 
-`mute.blocked-commands` lists command labels that muted players cannot use. Labels are case-insensitive and namespace prefixes are removed, so `minecraft:me` is covered by `me`. Chat and command enforcement use the mute loaded during pre-login; no SQL query runs for each message.
+`mute.blocked-commands` lists command labels that muted players cannot use. Labels are case-insensitive and namespace prefixes are removed, so `minecraft:me` is covered by `me`. Keep help and appeal commands out of this list. Chat and command enforcement use the highest-priority applicable mute loaded during pre-login: regular player mute, IP mute, then shadow mute. No SQL query runs for each message.
+
+Shadow-muted messages remain visible to the sender and console. Only players with `mbans.notify.shadow` can also see them. Blocked private-message commands receive a neutral confirmation and are never delivered. IP mutes are normalized and applied to every online or newly joining account on the address.
+
+## Appeals
+
+`appeals.in-game-enabled` allows an online player to submit `/appeal <appeal-id> <message>`. The supplied ID must belong to that player's UUID and only one submission is accepted per punishment. `appeals.max-message-length` is clamped between 32 and 2000 characters. Staff review the queue with `/mbans appeals` and `/mbans appeal`; accepting an appeal revokes the linked punishment when it is still active. Banned players cannot join to use this command, so keep `server.support-link` configured as the external appeal route.
 
 ## Defaults and authority
 

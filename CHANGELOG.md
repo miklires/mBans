@@ -2,6 +2,22 @@
 
 All notable changes to mBans are documented in this file.
 
+## 1.2.0 - 2026-08-27
+
+### Added
+
+- IP mutes with `/ipmute` and `/unipmute`
+- permanent and temporary shadow mutes with permission-gated staff visibility
+- multi-account cache invalidation and regression coverage for network punishment updates
+- UUID-bound in-game appeals and an administrative review queue
+
+### Fixed
+
+- rollback now removes affected local mute-cache entries immediately
+- edited reasons are reflected in active mute messages without reconnecting
+- removing a higher-priority mute restores any remaining applicable mute
+- shadow-mute broadcasts are visible only to authorized staff
+
 ## 1.1.0 - 2026-08-27
 
 ### Added
