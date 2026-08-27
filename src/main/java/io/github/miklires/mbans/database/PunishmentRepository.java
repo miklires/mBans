@@ -300,6 +300,11 @@ public class PunishmentRepository {
         return out;
     }
 
+    public List<Punishment> getActive(PunishmentType type,int limit,int offset)throws SQLException{
+        String sql="SELECT * FROM mbans_punishments WHERE type=? AND active=TRUE AND (expires_at IS NULL OR expires_at>?) ORDER BY issued_at DESC LIMIT ? OFFSET ?";
+        List<Punishment> out=new ArrayList<>();try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement(sql)){ps.setString(1,type.name());ps.setLong(2,Instant.now().getEpochSecond());ps.setInt(3,limit);ps.setInt(4,offset);try(ResultSet rs=ps.executeQuery()){while(rs.next())out.add(map(rs));}}return out;
+    }
+
     public void deactivate(long id, String revokedBy, String revokeReason) throws SQLException {
         String sql = """
             UPDATE mbans_punishments
@@ -315,6 +320,8 @@ public class PunishmentRepository {
             ps.executeUpdate();
         }
     }
+
+    public boolean updateReason(long id,String reason)throws SQLException{try(Connection c=db.getConnection();PreparedStatement ps=c.prepareStatement("UPDATE mbans_punishments SET reason=? WHERE id=?")){ps.setString(1,reason);ps.setLong(2,id);return ps.executeUpdate()==1;}}
 
     public void deactivateAllWarns(UUID uuid, String revokedBy) throws SQLException {
         String sql = """

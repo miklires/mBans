@@ -31,6 +31,7 @@ public final class BrigadierCommands {
         command(commands, "tempban", "Temporarily ban a player", List.of(), punishments);
         command(commands, "unban", "Remove a player ban", List.of("pardon"), punishments);
         command(commands, "banlist", "List active bans", List.of(), punishments);
+        command(commands, "mutelist", "List active mutes", List.of(), punishments);
         command(commands, "banip", "Ban a player or IP address", List.of(), punishments);
         command(commands, "unbanip", "Remove an IP ban", List.of(), punishments);
         command(commands, "mute", "Permanently or temporarily mute a player", List.of(), punishments);
@@ -41,7 +42,9 @@ public final class BrigadierCommands {
         command(commands, "unwarn", "Remove a warning", List.of(), punishments);
         command(commands, "history", "View punishment history", List.of(), punishments);
         command(commands, "check", "Check active punishments", List.of(), punishments);
-        command(commands, "staffhistory", "View punishments issued by a staff member", List.of(), punishments);
+        command(commands, "staffhistory", "View punishments issued by a staff member", List.of("blame"), punishments);
+        command(commands, "warns", "View active warnings", List.of(), punishments);
+        command(commands, "punishment", "Inspect a punishment by ID", List.of("punishinfo"), punishments);
         command(commands, "alts", "Find accounts that share an IP address", List.of("dupeip"), punishments);
         command(commands, "mbans", "Manage mBans", List.of(), admin, source -> true);
         command(commands, "muser", "Open the moderation menu for a player", List.of(), muser);

@@ -56,6 +56,9 @@ public class PunishmentCommand implements TabExecutor {
             case "staffhistory" -> history(sender, args, true);
             case "check" -> check(sender, args);
             case "banlist" -> banlist(sender, args);
+            case "mutelist" -> activeList(sender,args,PunishmentType.MUTE);
+            case "warns" -> warns(sender,args);
+            case "punishment" -> punishment(sender,args);
             case "alts" -> alts(sender, args);
             default -> true;
         };
@@ -379,6 +382,12 @@ public class PunishmentCommand implements TabExecutor {
         return true;
     }
 
+    private boolean activeList(CommandSender sender,String[]args,PunishmentType type){int page=page(args,0);run(sender,()->{List<Punishment> entries=plugin.getPunishmentRepository().getActive(type,10,(page-1)*10);if(entries.isEmpty()){reply(sender,"No active "+type.name().toLowerCase(Locale.ROOT)+"s");return;}reply(sender,"Active "+type.name().toLowerCase(Locale.ROOT)+"s (page "+page+")");for(Punishment entry:entries)reply(sender,"#"+entry.getId()+" "+entry.getTargetName()+" | "+entry.getReason()+" | "+DurationParser.formatExpiresAt(entry.getExpiresAt()));});return true;}
+
+    private boolean warns(CommandSender sender,String[]args){if(args.length<1){reply(sender,"Usage: /warns <player>");return true;}resolve(args[0],target->run(sender,()->{List<Punishment> entries=plugin.getPunishmentRepository().findActiveWarns(target.uuid());if(entries.isEmpty()){reply(sender,"No active warnings for "+target.name());return;}reply(sender,"Active warnings for "+target.name()+":");for(Punishment entry:entries)reply(sender,"#"+entry.getId()+" "+entry.getReason()+" | "+DATE.format(entry.getIssuedAt()));}),sender);return true;}
+
+    private boolean punishment(CommandSender sender,String[]args){if(args.length<1){reply(sender,"Usage: /punishment <id>");return true;}long id;try{id=Long.parseLong(args[0]);}catch(NumberFormatException error){reply(sender,"Invalid punishment ID");return true;}run(sender,()->{Optional<Punishment> found=plugin.getPunishmentRepository().findById(id);if(found.isEmpty()){reply(sender,"Punishment not found");return;}Punishment value=found.get();String ip=sender.hasPermission("mbans.view.ip")&&value.getTargetIp()!=null?" | ip="+value.getTargetIp():"";reply(sender,"#"+value.getId()+" "+value.getType()+" | "+value.getTargetName()+ip+" | "+value.getReason()+" | by "+value.getIssuedByName()+" | "+(value.isActive()?"active":"inactive")+" | appeal="+value.getAppealId());});return true;}
+
     private boolean alts(CommandSender sender, String[] args) {
         if (args.length < 1) {
             reply(sender, "Usage: /alts <player>");
@@ -483,7 +492,7 @@ public class PunishmentCommand implements TabExecutor {
                                       @NotNull String alias, @NotNull String[] args) {
         String name = command.getName().toLowerCase(Locale.ROOT);
         if (!sender.hasPermission("mbans.command." + name)) return List.of();
-        if (args.length == 1 && !name.equals("banlist")) return filter(Bukkit.getOnlinePlayers().stream()
+        if (args.length == 1 && !List.of("banlist","mutelist","punishment").contains(name)) return filter(Bukkit.getOnlinePlayers().stream()
                 .map(Player::getName).toList(), args[0]);
         if (args.length == 2) {
             List<String> values = switch (name) {

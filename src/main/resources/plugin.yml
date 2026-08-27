@@ -21,6 +21,7 @@ permissions:
   mbans.command.tempban: {default: op}
   mbans.command.unban: {default: op}
   mbans.command.banlist: {default: op}
+  mbans.command.mutelist: {default: op}
   mbans.command.banip: {default: op}
   mbans.command.unbanip: {default: op}
   mbans.command.mute: {default: op}
@@ -32,8 +33,12 @@ permissions:
   mbans.command.history: {default: op}
   mbans.command.check: {default: op}
   mbans.command.staffhistory: {default: op}
+  mbans.command.warns: {default: op}
+  mbans.command.punishment: {default: op}
   mbans.command.alts: {default: op}
   mbans.command.rollback: {default: op}
+  mbans.command.revoke: {default: op}
+  mbans.command.reason: {default: op}
   mbans.command.allow: {default: op}
   mbans.command.note: {default: op}
   mbans.command.notes: {default: op}
@@ -59,6 +64,7 @@ permissions:
       mbans.command.tempban: true
       mbans.command.unban: true
       mbans.command.banlist: true
+      mbans.command.mutelist: true
       mbans.command.banip: true
       mbans.command.unbanip: true
       mbans.command.mute: true
@@ -70,8 +76,12 @@ permissions:
       mbans.command.history: true
       mbans.command.check: true
       mbans.command.staffhistory: true
+      mbans.command.warns: true
+      mbans.command.punishment: true
       mbans.command.alts: true
       mbans.command.rollback: true
+      mbans.command.revoke: true
+      mbans.command.reason: true
       mbans.command.allow: true
       mbans.command.note: true
       mbans.command.notes: true

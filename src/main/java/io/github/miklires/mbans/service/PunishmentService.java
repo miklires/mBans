@@ -242,6 +242,10 @@ public class PunishmentService {
         plugin.getPunishmentRepository().deactivateAllWarns(targetUuid, revokedBy);
     }
 
+    public boolean revokeById(long id,String revokedBy,String reason)throws SQLException{Optional<Punishment> found=plugin.getPunishmentRepository().findById(id);if(found.isEmpty()||!found.get().isActive())return false;Punishment punishment=found.get();plugin.getPunishmentRepository().deactivate(id,revokedBy,reason);recordChange(punishment,"REVOKE");if(punishment.getType()==PunishmentType.MUTE)plugin.getMuteCacheService().invalidate(punishment.getTargetUuid());plugin.getDiscordWebhook().sendRevocation(punishment,revokedBy);return true;}
+
+    public boolean changeReason(long id,String reason)throws SQLException{return plugin.getPunishmentRepository().updateReason(id,reason);}
+
     public List<Punishment> getActiveWarns(UUID uuid) throws SQLException {
         return plugin.getPunishmentRepository().findActiveWarns(uuid);
     }

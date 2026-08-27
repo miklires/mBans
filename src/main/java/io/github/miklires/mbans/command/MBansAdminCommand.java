@@ -32,13 +32,15 @@ public class MBansAdminCommand implements TabExecutor {
                              @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
             sender.sendMessage(Component.text("mBans " + plugin.getPluginMeta().getVersion()));
-            sender.sendMessage(Component.text("/mbans reload|rollback|allow|note|notes|stats|import|export"));
+            sender.sendMessage(Component.text("/mbans reload|rollback|revoke|reason|allow|note|notes|stats|import|export"));
             return true;
         }
         String sub = args[0].toLowerCase(Locale.ROOT);
         return switch (sub) {
             case "reload" -> reload(sender);
             case "rollback" -> rollback(sender, args);
+            case "revoke" -> revoke(sender,args);
+            case "reason" -> reason(sender,args);
             case "allow" -> allow(sender, args);
             case "note" -> note(sender, args);
             case "notes" -> notes(sender, args);
@@ -86,6 +88,10 @@ public class MBansAdminCommand implements TabExecutor {
         });
         return true;
     }
+
+    private boolean revoke(CommandSender sender,String[]args){if(!check(sender,"mbans.command.revoke"))return true;if(args.length<2){reply(sender,"Usage: /mbans revoke <id> [reason]");return true;}long id;try{id=Long.parseLong(args[1]);}catch(NumberFormatException error){reply(sender,"Invalid punishment ID");return true;}String reason=args.length>2?CommandHelper.joinFrom(args,2):"revoked by staff";plugin.getScheduler().async(()->{try{reply(sender,plugin.getPunishmentService().revokeById(id,sender.getName(),reason)?"Punishment #"+id+" revoked":"Active punishment not found");}catch(SQLException error){fail(sender,"Could not revoke punishment",error);}});return true;}
+
+    private boolean reason(CommandSender sender,String[]args){if(!check(sender,"mbans.command.reason"))return true;if(args.length<3){reply(sender,"Usage: /mbans reason <id> <new reason>");return true;}long id;try{id=Long.parseLong(args[1]);}catch(NumberFormatException error){reply(sender,"Invalid punishment ID");return true;}String reason=CommandHelper.joinFrom(args,2);plugin.getScheduler().async(()->{try{reply(sender,plugin.getPunishmentService().changeReason(id,reason)?"Punishment #"+id+" updated":"Punishment not found");}catch(SQLException error){fail(sender,"Could not update reason",error);}});return true;}
 
     private boolean allow(CommandSender sender, String[] args) {
         if (!check(sender, "mbans.command.allow")) return true;
@@ -273,7 +279,7 @@ public class MBansAdminCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                       @NotNull String alias, @NotNull String[] args) {
-        if (args.length == 1) return List.of("reload", "rollback", "allow", "note", "notes", "stats", "import", "export").stream()
+        if (args.length == 1) return List.of("reload", "rollback", "revoke", "reason", "allow", "note", "notes", "stats", "import", "export").stream()
                 .filter(value -> value.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
         if (args.length == 2 && args[0].equalsIgnoreCase("import")) return List.of("vanilla", "litebans",
                 "libertybans", "advancedban", "banmanager").stream()
