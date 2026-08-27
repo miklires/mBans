@@ -54,6 +54,14 @@ When enabled, mBans keeps a per-player in-memory ring buffer. `/mute Steve spam 
 
 Chat evidence and full IP addresses are personal data. Define an appropriate retention and access policy for the server's jurisdiction.
 
+## Mute enforcement
+
+`mute.blocked-commands` lists command labels that muted players cannot use. Labels are case-insensitive and namespace prefixes are removed, so `minecraft:me` is covered by `me`. Chat and command enforcement use the mute loaded during pre-login; no SQL query runs for each message.
+
+## Defaults and authority
+
+`defaults.reason` is used when a punishment command omits its reason. Silent actions require `mbans.silent`. Replacing an existing ban or mute requires `mbans.override`, while replacing it with a shorter duration additionally requires `mbans.override.shorten`.
+
 ## GeoIP
 
 Download a current `GeoLite2-Country.mmdb` from MaxMind and place it in `plugins/mBans`. Then configure ISO 3166-1 alpha-2 country codes:

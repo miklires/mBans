@@ -2,6 +2,24 @@
 
 All notable changes to mBans are documented in this file.
 
+## 1.1.0 - 2026-08-27
+
+### Added
+
+- optional default reasons for all punishment commands
+- cached mute enforcement and configurable blocked commands
+- `/mutelist`, `/warns`, `/punishment`, and the `/blame` alias
+- ID-based revocation and punishment reason correction
+- separate permissions for silent actions and shortening overrides
+
+### Fixed
+
+- removed synchronous database reads from every chat message
+- prevented mute bypass through private-message commands
+- escaped punishment data before MiniMessage parsing
+- blocked inventory dragging in moderation GUIs
+- required GET for REST history and made history lookups case-insensitive
+
 ## 1.0.0 - 2026-08-14
 
 ### Added

@@ -76,6 +76,7 @@ public final class RestApiService {
 
     private void history(HttpExchange exchange) throws IOException {
         if (!authorized(exchange)) return;
+        if (!exchange.getRequestMethod().equals("GET")) { send(exchange, 405, error("method_not_allowed")); return; }
         String raw = exchange.getRequestURI().getRawQuery();
         String name = null;
         if (raw != null) for (String pair : raw.split("&")) {

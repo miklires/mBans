@@ -16,7 +16,7 @@
 
   <p>
     <a href="https://bstats.org/plugin/bukkit/mBans/33351"><img alt="bStats" src="https://img.shields.io/badge/bStats-33351-2F9BE6?style=for-the-badge"></a>
-    <a href="https://github.com/miklires/mBans/releases/tag/v1.0.0"><img alt="Release 1.0.0" src="https://img.shields.io/github/v/release/miklires/mBans?style=for-the-badge"></a>
+    <a href="https://github.com/miklires/mBans/releases/tag/v1.1.0"><img alt="Release 1.1.0" src="https://img.shields.io/github/v/release/miklires/mBans?style=for-the-badge"></a>
     <img alt="Java 25" src="https://img.shields.io/badge/Java-25-5382A1?style=for-the-badge">
   </p>
 </div>
@@ -30,7 +30,9 @@ The backend plugin supports Paper, Purpur, and Folia 26.2. The proxy module bloc
 - H2 and SQLite for a single server; MySQL, MariaDB, and PostgreSQL for shared networks
 - polling-based cross-server synchronization and a separate Velocity login check
 - punishment history, staff history, rollback, notes, IP exceptions, alt detection, and exports
-- silent punishments, reason templates, evidence links, and `-last` chat evidence
+- permission-gated silent punishments, reason templates, evidence links, and `-last` chat evidence
+- cached mute enforcement for chat and configurable private-message commands
+- active ban/mute/warning lists, punishment lookup by ID, reason editing, and ID-based revocation
 - configurable warning escalation and moderator immunity levels
 - offline warning delivery and generated appeal IDs
 - Discord embeds with per-type webhooks and an optional appeal button
@@ -42,13 +44,13 @@ The backend plugin supports Paper, Purpur, and Folia 26.2. The proxy module bloc
 
 - Java 25
 - Paper, Purpur, or Folia 26.2
-- Velocity 3.4 when using `mBans-Velocity-1.0.0.jar`
+- Velocity 3.4 when using `mBans-Velocity-1.1.0.jar`
 
 No external database is required for one backend. A network installation must use one shared MySQL, MariaDB, or PostgreSQL database. Do not share an H2 or SQLite file between processes.
 
 ## Install on one server
 
-1. Put `mBans-1.0.0.jar` in the server `plugins` directory.
+1. Put `mBans-1.1.0.jar` in the server `plugins` directory.
 2. Start the server once.
 3. Edit `plugins/mBans/config.yml` and restart when changing storage or network settings.
 
@@ -57,9 +59,9 @@ H2 is selected by default. Player messages are loaded from `lang/en_US.yml`; set
 ## Install on a Velocity network
 
 1. Create one MySQL, MariaDB, or PostgreSQL database.
-2. Install `mBans-1.0.0.jar` on every backend.
+2. Install `mBans-1.1.0.jar` on every backend.
 3. Configure the same database on every backend and give each one a different `network.server-name`.
-4. Install `mBans-Velocity-1.0.0.jar` in the Velocity `plugins` directory.
+4. Install `mBans-Velocity-1.1.0.jar` in the Velocity `plugins` directory.
 5. Start Velocity once and configure `plugins/mbans-velocity/config.properties` with the same JDBC connection.
 6. Restart the proxy and all backends.
 
@@ -86,22 +88,27 @@ Missing defaults are added without replacing existing values. `/mbans reload` re
 
 | Command | Purpose |
 |---|---|
-| `/ban <player> [duration] <reason>` | Ban a player permanently or temporarily |
-| `/tempban <player> <duration> <reason>` | Require a temporary ban duration |
+| `/ban <player> [duration] [reason]` | Ban a player permanently or temporarily |
+| `/tempban <player> <duration> [reason]` | Require a temporary ban duration |
 | `/unban <player> [reason]` | Remove an active ban |
-| `/banip <player\|ip> [duration] <reason>` | Ban an IP address |
+| `/banip <player\|ip> [duration] [reason]` | Ban an IP address |
 | `/unbanip <player\|ip>` | Remove an IP ban |
 | `/mute`, `/tempmute`, `/unmute` | Manage chat mutes |
-| `/warn <player> <reason>` | Add a warning and evaluate escalation rules |
+| `/warn <player> [reason]` | Add a warning and evaluate escalation rules |
 | `/unwarn <player> <id\|all>` | Remove one or all active warnings |
-| `/kick <player> <reason>` | Remove an online player |
+| `/kick <player> [reason]` | Remove an online player |
 | `/history <player> [page]` | View player punishment history |
 | `/staffhistory <staff> [page]` | View actions issued by a moderator |
 | `/check <player>` | Show active ban, mute, and warning state |
 | `/banlist [page]` | List active bans |
+| `/mutelist [page]` | List active mutes |
+| `/warns <player>` | List active warnings |
+| `/punishment <id>` | Inspect a punishment and its appeal ID |
 | `/alts <player>` | Find accounts with the same recorded IP; alias `/dupeip` |
 | `/muser <player>` | Open the moderation GUI, including offline records |
 | `/mbans rollback <staff> [time]` | Revoke recent punishments from one moderator |
+| `/mbans revoke <id> [reason]` | Revoke an active punishment by ID |
+| `/mbans reason <id> <reason>` | Correct a stored punishment reason |
 | `/mbans allow <player> [ip-ban-id]` | Exempt one UUID from its active IP ban |
 | `/mbans note <player> <text>` | Add a private staff note |
 | `/mbans notes <player>` | Read recent staff notes |
@@ -112,7 +119,7 @@ Missing defaults are added without replacing existing values. `/mbans reload` re
 
 Durations accept combined units such as `30m`, `2h`, `7d`, and `1mo`. Ban, mute, warning, and IP-ban commands accept `-s` and `--evidence=<url>`. Ban, mute, and warning commands also accept `-last <count>` to attach recent chat lines. A template name can replace the reason, for example `/ban Steve cheat`.
 
-Every administrative command has a matching `mbans.command.<name>` permission. `mbans.admin` grants the complete command set. Sensitive IP output requires `mbans.view.ip`; alt notifications require `mbans.notify.alts`. Target exemptions use `mbans.bypass.ban`, `mbans.bypass.mute`, `mbans.bypass.warn`, and `mbans.bypass.kick`. Replacing an existing ban or mute requires `mbans.override`.
+Every administrative command has a matching `mbans.command.<name>` permission. `mbans.admin` grants the complete command set. Sensitive IP output requires `mbans.view.ip`; alt notifications require `mbans.notify.alts`. Target exemptions use `mbans.bypass.ban`, `mbans.bypass.mute`, `mbans.bypass.warn`, and `mbans.bypass.kick`. Replacing an existing ban or mute requires `mbans.override`; shortening it additionally requires `mbans.override.shorten`. The `-s` flag requires `mbans.silent`.
 
 ## PlaceholderAPI
 
@@ -131,8 +138,8 @@ The vanilla profile reads `banned-players.json` and `banned-ips.json`. JDBC URLs
 
 ## Artifacts
 
-- `mBans-1.0.0.jar`: Paper, Purpur, and Folia backend
-- `mBans-Velocity-1.0.0.jar`: Velocity login enforcement
+- `mBans-1.1.0.jar`: Paper, Purpur, and Folia backend
+- `mBans-Velocity-1.1.0.jar`: Velocity login enforcement
 
 ## Telemetry and updates
 

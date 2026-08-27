@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.miklires"
-version = "1.0.0"
+version = "1.1.0"
 
 modrinth {
     token.set(System.getenv("MODRINTH_TOKEN") ?: "")
@@ -48,6 +48,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("com.h2database:h2:2.3.232")
+    testRuntimeOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
 }
 
 tasks {

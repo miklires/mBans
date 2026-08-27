@@ -242,7 +242,7 @@ public class PunishmentRepository {
     public List<Punishment> getHistory(String name, int limit, int offset) throws SQLException {
         String sql = """
             SELECT * FROM mbans_punishments
-            WHERE target_name = ?
+            WHERE LOWER(target_name) = LOWER(?)
             ORDER BY issued_at DESC
             LIMIT ? OFFSET ?
             """;
@@ -262,7 +262,7 @@ public class PunishmentRepository {
     public List<Punishment> getStaffHistory(String issuerName, int limit, int offset) throws SQLException {
         String sql = """
             SELECT * FROM mbans_punishments
-            WHERE issued_by_name = ?
+            WHERE LOWER(issued_by_name) = LOWER(?)
             ORDER BY issued_at DESC
             LIMIT ? OFFSET ?
             """;
