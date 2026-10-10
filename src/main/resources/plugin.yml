@@ -1,7 +1,7 @@
 name: mBans
 version: ${version}
 main: io.github.miklires.mbans.MBans
-api-version: '26.2'
+api-version: '26.3'
 author: miklires
 description: Cross-server punishment management for Paper networks
 load: STARTUP

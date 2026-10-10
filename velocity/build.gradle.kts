@@ -14,7 +14,7 @@ modrinth {
     versionName.set("mBans Velocity ${project.version}")
     versionType.set("release")
     uploadFile.set(tasks.shadowJar)
-    gameVersions.add("26.2")
+    gameVersions.add("26.3")
     loaders.add("velocity")
     changelog.set(provider { rootProject.file("CHANGELOG.md").readText() })
 }

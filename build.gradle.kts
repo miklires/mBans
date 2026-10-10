@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.miklires"
-version = "1.2.0"
+version = "1.2.1"
 
 modrinth {
     token.set(System.getenv("MODRINTH_TOKEN") ?: "")
@@ -14,7 +14,7 @@ modrinth {
     versionName.set("mBans ${project.version}")
     versionType.set("release")
     uploadFile.set(tasks.shadowJar)
-    gameVersions.add("26.2")
+    gameVersions.add("26.3")
     loaders.addAll("paper", "purpur", "folia")
     changelog.set(provider { file("CHANGELOG.md").takeIf { it.exists() }?.readText() ?: "" })
     syncBodyFrom.set(provider { file("README.md").takeIf { it.exists() }?.readText() ?: "" })
@@ -31,7 +31,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.169-beta")
     compileOnly("me.clip:placeholderapi:2.11.7")
     implementation("org.bstats:bstats-bukkit:3.1.0")
     implementation("com.google.code.gson:gson:2.14.0")
@@ -48,7 +48,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("com.h2database:h2:2.3.232")
-    testRuntimeOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
+    testRuntimeOnly("io.papermc.paper:paper-api:26.3.build.169-beta")
 }
 
 tasks {

@@ -20,7 +20,7 @@
   </p>
 </div>
 
-The backend plugin supports Paper, Purpur, and Folia 26.2. The proxy module blocks banned accounts before they enter a Velocity network.
+The backend plugin supports Paper, Purpur, and Folia 26.3. The proxy module blocks banned accounts before they enter a Velocity network.
 
 ## What it does
 
@@ -44,7 +44,7 @@ The backend plugin supports Paper, Purpur, and Folia 26.2. The proxy module bloc
 ## Requirements
 
 - Java 25
-- Paper, Purpur, or Folia 26.2
+- Paper, Purpur, or Folia 26.3
 - Velocity 3.4 when using `mBans-Velocity-1.2.0.jar`
 
 No external database is required for one backend. A network installation must use one shared MySQL, MariaDB, or PostgreSQL database. Do not share an H2 or SQLite file between processes.

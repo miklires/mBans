@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 - 2026-10-10
+
+- Added Minecraft 26.3 compatibility for the Paper and Velocity distributions and verified the complete build and tests.
+
 All notable changes to mBans are documented in this file.
 
 ## 1.2.0 - 2026-08-27
