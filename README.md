@@ -45,13 +45,13 @@ The backend plugin supports Paper, Purpur, and Folia 26.3. The proxy module bloc
 
 - Java 25
 - Paper, Purpur, or Folia 26.3
-- Velocity 3.4 when using `mBans-Velocity-1.2.0.jar`
+- Velocity 3.4 when using `mBans-Velocity-1.2.1.jar`
 
 No external database is required for one backend. A network installation must use one shared MySQL, MariaDB, or PostgreSQL database. Do not share an H2 or SQLite file between processes.
 
 ## Install on one server
 
-1. Put `mBans-1.2.0.jar` in the server `plugins` directory.
+1. Put `mBans-1.2.1.jar` in the server `plugins` directory.
 2. Start the server once.
 3. Edit `plugins/mBans/config.yml` and restart when changing storage or network settings.
 
@@ -60,9 +60,9 @@ H2 is selected by default. Player messages are loaded from `lang/en_US.yml`; set
 ## Install on a Velocity network
 
 1. Create one MySQL, MariaDB, or PostgreSQL database.
-2. Install `mBans-1.2.0.jar` on every backend.
+2. Install `mBans-1.2.1.jar` on every backend.
 3. Configure the same database on every backend and give each one a different `network.server-name`.
-4. Install `mBans-Velocity-1.2.0.jar` in the Velocity `plugins` directory.
+4. Install `mBans-Velocity-1.2.1.jar` in the Velocity `plugins` directory.
 5. Start Velocity once and configure `plugins/mbans-velocity/config.properties` with the same JDBC connection.
 6. Restart the proxy and all backends.
 
@@ -148,8 +148,8 @@ The vanilla profile reads `banned-players.json` and `banned-ips.json`. JDBC URLs
 
 ## Artifacts
 
-- `mBans-1.2.0.jar`: Paper, Purpur, and Folia backend
-- `mBans-Velocity-1.2.0.jar`: Velocity login enforcement
+- `mBans-1.2.1.jar`: Paper, Purpur, and Folia backend
+- `mBans-Velocity-1.2.1.jar`: Velocity login enforcement
 
 ## Telemetry and updates
 
